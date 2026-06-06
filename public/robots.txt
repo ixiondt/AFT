@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# AFT planner — public-facing landing + auth pages are crawlable.
+# Internal /profile, /plan, /dashboard, /api/* are server-rendered behind auth
+# and won't be reachable to anonymous crawlers regardless.
