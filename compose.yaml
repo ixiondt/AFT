@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    container_name: aft-postgres
+    environment:
+      POSTGRES_USER: aft
+      POSTGRES_PASSWORD: aft_dev_password
+      POSTGRES_DB: aft
+    ports:
+      - "5433:5432"
+    volumes:
+      - aft_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aft -d aft"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  aft_pgdata:

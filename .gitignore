@@ -1,0 +1,51 @@
+node_modules/
+.next/
+dist/
+build/
+out/
+
+.env
+.env.*
+!.env.example
+!.env*.example
+
+*.db
+*.sqlite
+*.sqlite3
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Scratch / debug files
+check_*.js
+test_*.js
+debug_*.ts
+debug_*.js
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Drizzle generated journal stays, but ignore local snapshots
+drizzle/meta/_journal.json.bak
+
+# Local TypeScript build-info cache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Demo / debug scripts created during dev
+scripts/demo_plan.mjs
+scripts/smoke_e2e.mjs
+scripts/debug_load_plan.mjs
+
+# Large intermediate that re-builds from the PDF
+data/aft_scoring_raw.json
+
+# Logs
+*.log
+npm-debug.log*
