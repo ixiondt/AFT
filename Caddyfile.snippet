@@ -1,0 +1,20 @@
+# Paste into /opt/apps/shared/caddy/Caddyfile and reload:
+#   sudo systemctl reload caddy
+
+aft.guardcybersolutionsllc.com {
+    reverse_proxy localhost:3013
+
+    header {
+        -Server
+        -X-Powered-By
+        -Via
+        -X-Nextjs-Cache
+        -X-Nextjs-Prerender
+        -X-Nextjs-Stale-Time
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    }
+
+    # Block accidental dotfile exposure without breaking /.well-known/*
+    @dotfiles path /.git/* /.env /.env.* /.htaccess /.htpasswd
+    respond @dotfiles 404
+}

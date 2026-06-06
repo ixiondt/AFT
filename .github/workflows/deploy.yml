@@ -1,0 +1,111 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/aft
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: tag
+        run: echo "sha=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_SHA: ${{ needs.build.outputs.image_tag }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: GHCR_USER,GHCR_TOKEN,IMAGE_SHA
+          command_timeout: 10m
+          # Heredoc is UNQUOTED so $GHCR_TOKEN/$IMAGE_SHA expand in the OUTER
+          # shell before being piped into the aft-deploy login shell.
+          # `echo` is a builtin so the token never appears in /proc/*/cmdline.
+          script: |
+            set -euo pipefail
+            sudo -u aft-deploy -i bash <<EOF
+              set -euo pipefail
+              echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USER" --password-stdin
+              trap 'podman logout ghcr.io || true' EXIT
+              cd /opt/apps/aft
+
+              # 1. Pull new image
+              podman pull ghcr.io/${{ github.repository_owner }}/aft:latest
+
+              # 2. Apply pending migrations as a one-shot container before swapping the app
+              podman run --rm \
+                --add-host host.containers.internal:host-gateway \
+                --env-file /opt/apps/aft/.env \
+                ghcr.io/${{ github.repository_owner }}/aft:latest \
+                node /app/scripts/migrate.mjs
+
+              # 3. Recreate the app container
+              podman-compose -f podman-compose.yml down 2>/dev/null || true
+              podman-compose -f podman-compose.yml up -d
+
+              # 4. Smoke check
+              for i in 1 2 3 4 5 6 7 8 9 10; do
+                if curl -fsS http://127.0.0.1:3013/api/health >/dev/null; then
+                  echo "[deploy] healthy after \$i tries"
+                  exit 0
+                fi
+                sleep 3
+              done
+              echo "[deploy] health check failed"
+              podman logs --tail 80 aft || true
+              exit 1
+            EOF

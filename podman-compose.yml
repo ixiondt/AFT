@@ -1,0 +1,28 @@
+# Production Podman Compose for AFT on the shared droplet.
+# - Connects to the host's Postgres on 5432 via host.containers.internal
+# - Exposes only 127.0.0.1:3013 so Caddy fronts traffic from
+#   https://aft.guardcybersolutionsllc.com
+# - Pulls the prebuilt image from ghcr.io (no on-droplet build)
+services:
+  aft:
+    image: ghcr.io/ixiondt/aft:latest
+    container_name: aft
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3013:3000"
+    env_file: .env
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
+    mem_limit: 512m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

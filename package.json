@@ -1,0 +1,49 @@
+{
+  "name": "aft-planner",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:up": "podman compose -f compose.yaml up -d",
+    "db:down": "podman compose -f compose.yaml down",
+    "telemetry": "next telemetry disable"
+  },
+  "dependencies": {
+    "@auth/drizzle-adapter": "^1.7.0",
+    "bcryptjs": "^2.4.3",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.36.0",
+    "groq-sdk": "^1.2.1",
+    "next": "^15.4.0",
+    "next-auth": "5.0.0-beta.25",
+    "pino": "^9.5.0",
+    "pino-pretty": "^11.3.0",
+    "postgres": "^3.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.28.0",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "^15.4.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
