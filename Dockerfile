@@ -11,6 +11,12 @@ RUN npm install --ignore-scripts --no-audit --no-fund
 FROM node:22-alpine AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Next.js's "collect page data" phase eagerly evaluates module-level imports.
+# These stubs satisfy the lazy env getters during build only — the actual
+# values come from /opt/apps/aft/.env at runtime, never from these.
+ENV DATABASE_URL=postgres://build:build@localhost:5432/build_stub
+ENV AUTH_SECRET=build_time_only_not_used_at_runtime_must_be_32_chars_min
+ENV AUTH_URL=http://localhost:3000
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
