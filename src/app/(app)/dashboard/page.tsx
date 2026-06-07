@@ -1,14 +1,27 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { eq } from "drizzle-orm";
 import { auth, signOut } from "@/lib/auth";
+import { db, schema } from "@/lib/db";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import { loadProgressSnapshot } from "@/lib/aft/progress-service";
 import type { Plan } from "@/lib/planner";
-import { secToMmss } from "@/lib/scoring";
+import { PinSetupCard } from "./pin-setup";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pin_error?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/signin");
+
+  const { pin_error } = await searchParams;
+  const userRow = await db.query.users.findFirst({
+    where: eq(schema.users.id, session.user.id),
+    columns: { pinHash: true },
+  });
+  const hasPin = Boolean(userRow?.pinHash);
 
   async function signOutAction() {
     "use server";
@@ -32,7 +45,11 @@ export default async function DashboardPage() {
           </form>
         </header>
 
-        <section className="mt-8 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-6">
+        <div className="mt-6">
+          <PinSetupCard hasPin={hasPin} errorParam={pin_error} />
+        </div>
+
+        <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-6">
           <p className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
             Next step
           </p>
@@ -167,6 +184,10 @@ export default async function DashboardPage() {
           </Link>
         </section>
       )}
+
+      <div className="mt-6">
+        <PinSetupCard hasPin={hasPin} errorParam={pin_error} />
+      </div>
 
       <section className="mt-6">
         <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
