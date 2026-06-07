@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { ageToBracket } from "@/lib/scoring";
 import { generatePlan, type Plan, type PlanInput } from "@/lib/planner";
 import { db, schema } from "@/lib/db";
@@ -151,11 +152,18 @@ export async function persistGeneratedPlan(args: {
   return { planId: planRow.id };
 }
 
-/** Load the active plan for a user. */
-export async function loadActivePlan(userId: string) {
+/**
+ * Load the active plan for a user.
+ *
+ * Wrapped in React's `cache()` so multiple callers in the same request
+ * (typically layout + page + a section component) share one DB read +
+ * one JSONB parse instead of N. Per-request memo only — does NOT leak
+ * across requests.
+ */
+export const loadActivePlan = cache(async (userId: string) => {
   const row = await db.query.plans.findFirst({
     where: (p, { and, eq }) => and(eq(p.userId, userId), eq(p.active, true)),
     orderBy: (p, { desc }) => [desc(p.createdAt)],
   });
   return row ?? null;
-}
+});
