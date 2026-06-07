@@ -7,6 +7,7 @@ import { loadWeightLog, type WeightLogEntry } from "@/lib/aft/weight-service";
 import {
   armyBodyFatMaxPct,
   tapeBodyFatPct,
+  tapeBodyFatPctMultiSite,
   whtR,
   whtRBand,
   whtRBandLabel,
@@ -62,10 +63,12 @@ export default async function BodyPage() {
       <History log={log} profile={profile ?? null} />
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
-        Body fat % uses the DoD circumference method (AR 600-9 / DODI 1308.3).
-        WHtR thresholds per WHO + NIH (PMC5118501). Army is transitioning toward a
-        single-site abdominal measurement; Guard units commonly still use the
-        multi-site tape test, which is what we calculate here.
+        Male body fat % uses the current Army single-site abdominal method
+        (AR 600-9 update, effective Jan 2024 — no neck measurement required).
+        Female body fat % uses the multi-site Hodgdon-Beckett formula
+        (waist + hip + neck). WHtR thresholds per WHO + NIH (PMC5118501).
+        If you log a neck circumference, the history table also surfaces the
+        legacy multi-site number for comparison while Guard units transition.
       </footer>
     </main>
   );
@@ -115,12 +118,18 @@ function CurrentSummary({
   latest: WeightLogEntry | null;
 }) {
   const heightIn = profile.heightIn ?? 0;
-  const waist = latest?.measurements?.waistIn;
-  const ratio = whtR(waist, heightIn);
+  // For males, WHtR can use abdomen if waist isn't logged separately —
+  // the Army's abdominal circumference is functionally the same measurement.
+  const waistOrAbdomen =
+    profile.sex === "MC"
+      ? latest?.measurements?.waistIn ?? latest?.measurements?.abdomenIn
+      : latest?.measurements?.waistIn;
+  const ratio = whtR(waistOrAbdomen, heightIn);
   const band = ratio !== null ? whtRBand(ratio) : null;
   const bf = latest
     ? tapeBodyFatPct({
         sex: profile.sex,
+        age: profile.age,
         heightIn,
         measurements: latest.measurements ?? {},
       })
@@ -166,7 +175,7 @@ function CurrentSummary({
           <>
             <NoData />
             <p className="mt-1 text-[10px] text-[var(--color-ink-3)]">
-              Log a waist measurement
+              Log {profile.sex === "MC" ? "abdomen" : "waist"} measurement
             </p>
           </>
         )}
@@ -191,12 +200,17 @@ function CurrentSummary({
             <p className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
               Army max: {bfMax}% (age {profile.age}, {profile.sex})
             </p>
+            {profile.sex === "MC" && (
+              <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
+                Single-site abdomen (current standard)
+              </p>
+            )}
           </>
         ) : (
           <>
             <NoData />
             <p className="mt-1 text-[10px] text-[var(--color-ink-3)]">
-              Log {profile.sex === "MC" ? "abdomen + neck" : "waist + hip + neck"}
+              Log {profile.sex === "MC" ? "abdomen" : "waist + hip + neck"}
             </p>
           </>
         )}
@@ -249,41 +263,65 @@ function LogForm({
             max={600}
             required
           />
-          <Field
-            name="abdomenIn"
-            label="Abdomen (in)"
-            defaultValue={prefill.abdomenIn}
-            step={0.1}
-            min={20}
-            max={70}
-          />
-          <Field
-            name="waistIn"
-            label="Waist (in)"
-            defaultValue={prefill.waistIn}
-            step={0.1}
-            min={20}
-            max={70}
-          />
-          <Field
-            name="neckIn"
-            label="Neck (in)"
-            defaultValue={prefill.neckIn}
-            step={0.1}
-            min={10}
-            max={25}
-          />
-          {sex === "F" && (
-            <Field
-              name="hipIn"
-              label="Hip (in)"
-              defaultValue={prefill.hipIn}
-              step={0.1}
-              min={25}
-              max={80}
-            />
+          {sex === "MC" ? (
+            <>
+              <Field
+                name="abdomenIn"
+                label="Abdomen at navel (in)"
+                defaultValue={prefill.abdomenIn}
+                step={0.1}
+                min={20}
+                max={70}
+                hint="New Army standard"
+              />
+              {/* Keep neck visible only as a collapsible "for legacy multi-site" hint. */}
+            </>
+          ) : (
+            <>
+              <Field
+                name="waistIn"
+                label="Waist (in)"
+                defaultValue={prefill.waistIn}
+                step={0.1}
+                min={20}
+                max={70}
+              />
+              <Field
+                name="neckIn"
+                label="Neck (in)"
+                defaultValue={prefill.neckIn}
+                step={0.1}
+                min={10}
+                max={25}
+              />
+              <Field
+                name="hipIn"
+                label="Hip (in)"
+                defaultValue={prefill.hipIn}
+                step={0.1}
+                min={25}
+                max={80}
+              />
+            </>
           )}
         </div>
+        {sex === "MC" && (
+          <details className="text-xs text-[var(--color-ink-3)]">
+            <summary className="cursor-pointer hover:text-[var(--color-ink-2)]">
+              Optional: log neck for the legacy multi-site number
+            </summary>
+            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Field
+                name="neckIn"
+                label="Neck (in)"
+                defaultValue={prefill.neckIn}
+                step={0.1}
+                min={10}
+                max={25}
+              />
+            </div>
+          </details>
+        )}
         <label className="block">
           <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
             Notes (optional)
@@ -315,6 +353,7 @@ function Field({
   max,
   step,
   required,
+  hint,
 }: {
   name: string;
   label: string;
@@ -323,6 +362,7 @@ function Field({
   max?: number;
   step?: number;
   required?: boolean;
+  hint?: string;
 }) {
   return (
     <label className="block">
@@ -339,6 +379,11 @@ function Field({
         required={required}
         className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
       />
+      {hint && (
+        <span className="mt-0.5 block text-[10px] text-[var(--color-ink-3)]">
+          {hint}
+        </span>
+      )}
     </label>
   );
 }
@@ -352,6 +397,7 @@ function History({
 }) {
   if (!log.length) return null;
   const sorted = [...log].reverse();
+  const isMale = profile?.sex === "MC";
 
   return (
     <section className="mt-8">
@@ -364,39 +410,53 @@ function History({
             <tr>
               <th className="px-3 py-2 font-normal">Date</th>
               <th className="px-3 py-2 font-normal">Weight</th>
-              <th className="px-3 py-2 font-normal">Waist</th>
+              <th className="px-3 py-2 font-normal">{isMale ? "Abdomen" : "Waist"}</th>
               <th className="px-3 py-2 font-normal">WHtR</th>
               <th className="px-3 py-2 font-normal">BF %</th>
+              {isMale && <th className="px-3 py-2 font-normal">BF % (legacy)</th>}
               <th className="px-3 py-2 font-normal">Note</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((e) => {
               const heightIn = profile?.heightIn ?? 0;
-              const ratio = whtR(e.measurements?.waistIn, heightIn);
-              const bf =
-                profile
-                  ? tapeBodyFatPct({
-                      sex: profile.sex,
-                      heightIn,
-                      measurements: e.measurements ?? {},
-                    })
-                  : null;
+              const waistOrAbdomen = isMale
+                ? e.measurements?.abdomenIn ?? e.measurements?.waistIn
+                : e.measurements?.waistIn;
+              const ratio = whtR(waistOrAbdomen, heightIn);
+              const bf = profile
+                ? tapeBodyFatPct({
+                    sex: profile.sex,
+                    age: profile.age,
+                    heightIn,
+                    measurements: e.measurements ?? {},
+                  })
+                : null;
+              const bfLegacy = profile
+                ? tapeBodyFatPctMultiSite({
+                    sex: profile.sex,
+                    heightIn,
+                    measurements: e.measurements ?? {},
+                  })
+                : null;
               return (
                 <tr key={e.id} className="border-b border-[var(--color-line)] last:border-0">
                   <td className="px-3 py-1.5 font-mono">
                     {new Date(e.recordedAt).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-1.5 font-mono">{e.weightLb}</td>
-                  <td className="px-3 py-1.5 font-mono">
-                    {e.measurements?.waistIn ?? "—"}
-                  </td>
+                  <td className="px-3 py-1.5 font-mono">{waistOrAbdomen ?? "—"}</td>
                   <td className="px-3 py-1.5 font-mono">
                     {ratio !== null ? ratio.toFixed(2) : "—"}
                   </td>
                   <td className="px-3 py-1.5 font-mono">
                     {bf !== null ? `${bf}%` : "—"}
                   </td>
+                  {isMale && (
+                    <td className="px-3 py-1.5 font-mono text-[var(--color-ink-3)]">
+                      {bfLegacy !== null ? `${bfLegacy}%` : "—"}
+                    </td>
+                  )}
                   <td className="px-3 py-1.5 text-[var(--color-ink-3)]">{e.notes ?? ""}</td>
                 </tr>
               );
