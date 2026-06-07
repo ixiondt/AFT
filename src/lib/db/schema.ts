@@ -23,6 +23,8 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
   passwordHash: text("password_hash"),
+  /** Bcrypt hash of a 4–6 digit PIN for quick re-auth on a known device. Null = no PIN. */
+  pinHash: text("pin_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 
