@@ -99,6 +99,7 @@ export type InitialFormValues = {
   age?: string;
   sex?: Sex | "";
   bodyweightLb?: string;
+  goalBodyweightLb?: string;
   daysPerWeek?: string;
   durationWeeks?: number;
   testDate?: string;
@@ -189,6 +190,7 @@ export function ProfileForm({
             max={80}
             required
             placeholder="e.g. 32"
+            autoFocus
           />
           <Select
             name="sex"
@@ -209,6 +211,14 @@ export function ProfileForm({
             min={80}
             max={500}
             required
+          />
+          <NumberInput
+            name="goalBodyweightLb"
+            label="Goal bodyweight (lb, optional)"
+            placeholder="e.g. 180"
+            defaultValue={iv.goalBodyweightLb}
+            min={80}
+            max={500}
           />
         </Row>
         {validAge && (
@@ -769,6 +779,7 @@ function NumberInput(props: {
   required?: boolean;
   hint?: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
+  autoFocus?: boolean;
 }) {
   return (
     <label className="block">
@@ -783,6 +794,7 @@ function NumberInput(props: {
         max={props.max}
         required={props.required}
         onChange={props.onChange}
+        autoFocus={props.autoFocus}
         className={inputClass}
       />
       {props.hint && (

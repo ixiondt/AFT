@@ -54,7 +54,7 @@ export default async function SignUpPage({
     <main className="mx-auto max-w-md px-6 py-16">
       <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
       <form action={signUpAction} className="mt-6 space-y-4">
-        <Field name="name" type="text" label="Name (optional)" autoComplete="name" />
+        <Field name="name" type="text" label="Name (optional)" autoComplete="name" autoFocus />
         <Field name="email" type="email" label="Email" autoComplete="email" required />
         <Field
           name="password"
@@ -90,6 +90,7 @@ function Field(props: {
   type: string;
   autoComplete?: string;
   required?: boolean;
+  autoFocus?: boolean;
 }) {
   return (
     <label className="block">
@@ -101,6 +102,7 @@ function Field(props: {
         type={props.type}
         autoComplete={props.autoComplete}
         required={props.required}
+        autoFocus={props.autoFocus}
         className="mt-1 block w-full rounded-lg border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
       />
     </label>

@@ -12,6 +12,7 @@ export function formToPlanInput(form: ProfileFormInput): PlanInput {
     age: form.age,
     sex: form.sex,
     bodyweightLb: form.bodyweightLb,
+    ...(form.goalBodyweightLb ? { goalBodyweightLb: form.goalBodyweightLb } : {}),
     daysPerWeek: form.daysPerWeek as 3 | 4 | 5 | 6,
     durationWeeks: form.durationWeeks,
     equipment: form.equipment,
