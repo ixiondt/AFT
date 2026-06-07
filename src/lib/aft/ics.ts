@@ -26,17 +26,20 @@ function escapeText(s: string): string {
     .replace(/;/g, "\\;");
 }
 
-/** RFC 5545 line folding: 75 octets/line, continuation lines start with a single space. */
+/**
+ * RFC 5545 line folding: first line max 75 octets, continuation lines start
+ * with a single space and carry up to 74 octets of content (so total <= 75).
+ * Splits by character index, not byte length — fine for ASCII-only content.
+ */
 function foldLine(line: string): string {
   if (line.length <= 75) return line;
-  const out: string[] = [];
-  let i = 0;
-  while (i < line.length) {
-    const chunk = line.slice(i, i + (i === 0 ? 75 : 74));
-    out.push(i === 0 ? chunk : ` ${chunk}`);
-    i += chunk.length - (i === 0 ? 0 : 1);
+  const parts: string[] = [line.slice(0, 75)];
+  let pos = 75;
+  while (pos < line.length) {
+    parts.push(" " + line.slice(pos, pos + 74));
+    pos += 74;
   }
-  return out.join("\r\n");
+  return parts.join("\r\n");
 }
 
 /** Snap a date forward to the next Monday (if not already Monday). */
@@ -53,63 +56,50 @@ function snapToMonday(date: Date): Date {
 }
 
 const SESSION_LABEL_FOR_CALENDAR: Record<SessionType, string> = {
-  strength_a: "AFT • Strength A",
-  strength_b: "AFT • Strength B",
-  intervals: "AFT • Run intervals",
-  tempo: "AFT • Tempo run",
-  long: "AFT • Long run",
-  aft_skills: "AFT • Skills (SDC/HRP/Plank)",
-  sdc: "AFT • SDC focus",
-  recovery: "AFT • Active recovery",
-  rest: "AFT • Rest",
+  strength_a: "AFT Strength A",
+  strength_b: "AFT Strength B",
+  intervals: "AFT Intervals",
+  tempo: "AFT Tempo run",
+  long: "AFT Long run",
+  aft_skills: "AFT Skills (SDC/HRP/Plank)",
+  sdc: "AFT SDC focus",
+  recovery: "AFT Recovery",
+  rest: "AFT Rest",
 };
 
-function describeSession(session: SessionPrescription): string {
-  const lines: string[] = [];
-  if (session.warmup.length) {
-    lines.push("Warm-up:");
-    for (const w of session.warmup) lines.push(`• ${w}`);
-    lines.push("");
-  }
-  if (session.main.length) {
-    lines.push("Main:");
-    for (const ex of session.main) {
-      const weight = ex.weightLb
-        ? ` @ ${ex.weightLb} lb`
-        : ex.weightDescriptor
-          ? ` (${ex.weightDescriptor})`
-          : "";
-      const exLine = `• ${ex.name}: ${ex.sets}×${ex.reps}${weight}`;
-      lines.push(exLine);
-      if (ex.notes) lines.push(`  ${ex.notes}`);
-    }
-    lines.push("");
-  }
-  if (session.cooldown.length) {
-    lines.push("Cool-down:");
-    for (const c of session.cooldown) lines.push(`• ${c}`);
-  }
-  if (session.notes && session.notes.length) {
-    lines.push("");
-    lines.push("Notes:");
-    for (const n of session.notes) lines.push(`• ${n}`);
+/**
+ * Compact description: just the title and the main exercise lines, one per line.
+ * Warmup/cooldown/notes are intentionally omitted from the calendar event so
+ * the iCalendar is short enough to download quickly and the calendar UI shows
+ * the actionable prescription at a glance. Detail still lives in the web app.
+ */
+function describeSessionCompact(session: SessionPrescription): string {
+  const parts: string[] = [session.title];
+  for (const ex of session.main) {
+    const weight = ex.weightLb
+      ? ` @ ${ex.weightLb} lb`
+      : ex.weightDescriptor
+        ? ` (${ex.weightDescriptor})`
+        : "";
+    parts.push(`- ${ex.name}: ${ex.sets}×${ex.reps}${weight}`);
   }
   if (session.rpeTarget !== undefined) {
-    lines.push("");
-    lines.push(`RPE target: ${session.rpeTarget}/10`);
+    parts.push(`RPE ${session.rpeTarget}/10`);
   }
-  return lines.join("\n");
+  return parts.join("\n");
 }
+
+const SKIPPABLE: ReadonlySet<SessionType> = new Set(["rest", "recovery"]);
 
 export function planToIcs(args: {
   plan: Plan;
   planId: string;
   startDate: Date;
-  /** If true, skip scheduling "rest" days as events. Default true. */
-  skipRest?: boolean;
+  /** Default true. When true, "rest" AND "recovery" days are omitted. */
+  trainingOnly?: boolean;
 }): string {
   const { plan, planId, startDate } = args;
-  const skipRest = args.skipRest !== false;
+  const trainingOnly = args.trainingOnly !== false;
   const week0Monday = snapToMonday(startDate);
   const dtstamp = formatUtcStamp(new Date(plan.generatedAt));
 
@@ -119,14 +109,14 @@ export function planToIcs(args: {
     `PRODID:${PROD_ID}`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:AFT Plan (${plan.input.durationWeeks} wk)`,
+    `X-WR-CALNAME:AFT Plan`,
     `X-WR-CALDESC:Personalized AFT training plan. Goal ${plan.goalTotal} pts by ${plan.input.testDate}.`,
   ];
 
   for (const week of plan.weeks) {
     for (const day of week.days) {
       const sessionType = day.session.sessionType;
-      if (skipRest && sessionType === "rest") continue;
+      if (trainingOnly && SKIPPABLE.has(sessionType)) continue;
 
       const eventDate = new Date(week0Monday);
       eventDate.setUTCDate(
@@ -135,8 +125,8 @@ export function planToIcs(args: {
       const eventNext = new Date(eventDate);
       eventNext.setUTCDate(eventNext.getUTCDate() + 1);
 
-      const summary = `${SESSION_LABEL_FOR_CALENDAR[sessionType]} — W${week.weekIndex + 1} ${week.block}`;
-      const description = describeSession(day.session);
+      const summary = `${SESSION_LABEL_FOR_CALENDAR[sessionType]} — W${week.weekIndex + 1}`;
+      const description = describeSessionCompact(day.session);
       const uid = `plan-${planId}-w${week.weekIndex}-d${day.dayOfWeek}@aft-planner`;
 
       out.push(
@@ -153,22 +143,19 @@ export function planToIcs(args: {
     }
   }
 
-  // Add the test day itself as a marker event on testDate.
+  // Test day marker
   const testDay = new Date(plan.input.testDate + "T00:00:00Z");
   if (!Number.isNaN(testDay.getTime())) {
     const testNext = new Date(testDay);
     testNext.setUTCDate(testNext.getUTCDate() + 1);
-    const goalSummary = `AFT • TEST DAY — goal ${plan.goalTotal} pts`;
+    const goalSummary = `AFT TEST DAY — goal ${plan.goalTotal} pts`;
     const goalDescription = [
-      `Bracket: ${plan.bracket}`,
-      `Goal total: ${plan.goalTotal} pts`,
-      "",
-      "Targets:",
-      `• MDL: ${plan.input.goal.MDL} lb`,
-      `• HRP: ${plan.input.goal.HRP} reps`,
-      `• SDC: ${secToMmss(plan.input.goal.SDC)}`,
-      `• PLK: ${secToMmss(plan.input.goal.PLK)}`,
-      `• 2MR: ${secToMmss(plan.input.goal["2MR"])}`,
+      `Goal totals (bracket ${plan.bracket}):`,
+      `MDL ${plan.input.goal.MDL} lb`,
+      `HRP ${plan.input.goal.HRP} reps`,
+      `SDC ${secToMmss(plan.input.goal.SDC)}`,
+      `PLK ${secToMmss(plan.input.goal.PLK)}`,
+      `2MR ${secToMmss(plan.input.goal["2MR"])}`,
     ].join("\n");
     out.push(
       "BEGIN:VEVENT",
