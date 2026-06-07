@@ -180,6 +180,26 @@ export const plans = pgTable(
   }),
 );
 
+/** Bodyweight log entries per user — drives the weight-tracker chart on /plan. */
+export const weightLogs = pgTable(
+  "weight_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .references(() => plans.id, { onDelete: "set null" }),
+    weightLb: integer("weight_lb").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+    notes: text("notes"),
+  },
+  (t) => ({
+    userIdx: index("weight_logs_user_idx").on(t.userId, t.recordedAt),
+    planIdx: index("weight_logs_plan_idx").on(t.planId),
+  }),
+);
+
 /** Chat with Groq about the plan — message log + which edits each turn applied. */
 export const planChatMessages = pgTable(
   "plan_chat_messages",
