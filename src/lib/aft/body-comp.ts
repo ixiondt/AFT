@@ -1,16 +1,20 @@
 /**
  * Body composition helpers.
  *
- * - **WHtR** (Waist-to-Height Ratio): simple waist/height, increasingly used as
- *   a screening tool. Reference: WHO 2008 + 2024 NIH (PMC5118501).
- * - **Tape-test body fat %**: the Army/DoD circumference method.
- *   Male:   86.010·log10(abdomen − neck) − 70.041·log10(height) + 36.76
- *   Female: 163.205·log10(waist + hip − neck) − 97.684·log10(height) − 78.387
- *   All measurements in inches. AR 600-9 / DODI 1308.3.
+ * - **WHtR** (Waist-to-Height Ratio): simple waist/height. Reference: WHO 2008
+ *   + 2024 NIH (PMC5118501). Healthy < 0.5.
+ * - **Body fat %**:
+ *   - **Male — Army single-site (current standard, AR 600-9 update Jan 2024):**
+ *     Single abdominal circumference at the navel. No neck.
+ *     %BF ≈ 0.74·abdomen − 0.34·height + 0.10·age + 14.43 (inches/years)
+ *   - **Female — multi-site tape (Hodgdon-Beckett, still current):**
+ *     %BF = 163.205·log10(waist + hip − neck) − 97.684·log10(height) − 78.387
  *
- * The Army is transitioning toward a single-site abdominal method and WHtR
- * for screening; many Guard units are still using the multi-site tape test.
- * We compute whichever values the user has measurements for.
+ * The single-site male formula is an inches-unit approximation of the
+ * abdomen/height/age regression the Army adopted with the new ABCP. Guard
+ * units waiting for guidance commonly still use the Hodgdon-Beckett
+ * abdomen−neck/height multi-site formula — we expose that too via
+ * tapeBodyFatPctMultiSite() in case you want the legacy number for comparison.
  */
 
 export type Sex = "MC" | "F";
@@ -50,10 +54,47 @@ export function whtRBandLabel(band: WhtRBand): string {
 }
 
 /**
- * Tape-test body fat percentage.
+ * Body fat % using the current Army standard.
+ * - Male: single-site (abdomen + height + age). NO neck required.
+ * - Female: multi-site (waist + hip + neck + height).
  * Returns null if the required inputs for the given sex are missing.
  */
 export function tapeBodyFatPct(args: {
+  sex: Sex;
+  age?: number;
+  heightIn: number | undefined;
+  measurements: Measurements;
+}): number | null {
+  const { sex, age, heightIn, measurements } = args;
+  if (!heightIn || heightIn <= 0) return null;
+  const m = measurements;
+
+  if (sex === "MC") {
+    // Single-site: abdomen at the navel + height + age.
+    const abdomen = m.abdomenIn ?? m.waistIn;
+    if (!abdomen) return null;
+    const ageVal = typeof age === "number" && age > 0 ? age : 30;
+    const bf = 0.74 * abdomen - 0.34 * heightIn + 0.10 * ageVal + 14.43;
+    return roundOne(Math.max(0, Math.min(60, bf)));
+  }
+  // Female multi-site stays as Hodgdon-Beckett (still current).
+  const waist = m.waistIn;
+  const hip = m.hipIn;
+  const neck = m.neckIn;
+  if (!waist || !hip || !neck) return null;
+  if (waist + hip <= neck) return null;
+  const bf =
+    163.205 * Math.log10(waist + hip - neck) -
+    97.684 * Math.log10(heightIn) -
+    78.387;
+  return roundOne(Math.max(0, Math.min(60, bf)));
+}
+
+/**
+ * Legacy multi-site tape formula (Hodgdon-Beckett). Useful for comparison
+ * against the new single-site number while Guard units transition.
+ */
+export function tapeBodyFatPctMultiSite(args: {
   sex: Sex;
   heightIn: number | undefined;
   measurements: Measurements;
@@ -61,31 +102,25 @@ export function tapeBodyFatPct(args: {
   const { sex, heightIn, measurements } = args;
   if (!heightIn || heightIn <= 0) return null;
   const m = measurements;
-
   if (sex === "MC") {
-    // Male formula: needs abdomen and neck.
     const abdomen = m.abdomenIn ?? m.waistIn;
     const neck = m.neckIn;
-    if (!abdomen || !neck) return null;
-    if (abdomen <= neck) return null;
+    if (!abdomen || !neck || abdomen <= neck) return null;
     const bf =
       86.01 * Math.log10(abdomen - neck) -
       70.041 * Math.log10(heightIn) +
       36.76;
     return roundOne(Math.max(0, Math.min(60, bf)));
-  } else {
-    // Female formula: needs waist + hip + neck.
-    const waist = m.waistIn;
-    const hip = m.hipIn;
-    const neck = m.neckIn;
-    if (!waist || !hip || !neck) return null;
-    if (waist + hip <= neck) return null;
-    const bf =
-      163.205 * Math.log10(waist + hip - neck) -
-      97.684 * Math.log10(heightIn) -
-      78.387;
-    return roundOne(Math.max(0, Math.min(60, bf)));
   }
+  const waist = m.waistIn;
+  const hip = m.hipIn;
+  const neck = m.neckIn;
+  if (!waist || !hip || !neck || waist + hip <= neck) return null;
+  const bf =
+    163.205 * Math.log10(waist + hip - neck) -
+    97.684 * Math.log10(heightIn) -
+    78.387;
+  return roundOne(Math.max(0, Math.min(60, bf)));
 }
 
 function roundOne(n: number): number {
