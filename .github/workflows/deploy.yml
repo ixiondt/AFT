@@ -66,19 +66,30 @@ jobs:
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_SHA: ${{ needs.build.outputs.image_tag }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: GHCR_USER,GHCR_TOKEN,IMAGE_SHA
+          envs: GHCR_USER,GHCR_TOKEN,IMAGE_SHA,GROQ_API_KEY
           command_timeout: 10m
-          # Heredoc is UNQUOTED so $GHCR_TOKEN/$IMAGE_SHA expand in the OUTER
-          # shell before being piped into the aft-deploy login shell.
-          # `echo` is a builtin so the token never appears in /proc/*/cmdline.
+          # Heredoc is UNQUOTED so $GHCR_TOKEN/$IMAGE_SHA/$GROQ_API_KEY expand
+          # in the OUTER shell before being piped into the aft-deploy login
+          # shell. `echo` is a builtin so the token never appears in
+          # /proc/*/cmdline.
           script: |
             set -euo pipefail
             sudo -u aft-deploy -i bash <<EOF
               set -euo pipefail
+
+              # 0. Sync runtime secrets from GHA -> /opt/apps/aft/.env so the
+              #    repository-secrets store is the source of truth. Only update
+              #    the line if the secret is set (empty = leave existing value).
+              if [ -n "$GROQ_API_KEY" ]; then
+                sed -i "s|^GROQ_API_KEY=.*|GROQ_API_KEY=$GROQ_API_KEY|" /opt/apps/aft/.env
+                echo "[deploy] GROQ_API_KEY synced from CI"
+              fi
+
               echo "$GHCR_TOKEN" | podman login ghcr.io -u "$GHCR_USER" --password-stdin
               trap 'podman logout ghcr.io || true' EXIT
               cd /opt/apps/aft
