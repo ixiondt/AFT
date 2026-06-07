@@ -1,6 +1,8 @@
 import { secToMmss } from "@/lib/scoring";
 import type { BlockName, Plan, SessionPrescription, SessionType } from "@/lib/planner";
+import type { WorkoutLog } from "@/lib/aft/workout-service";
 import { WeekControls } from "./week-controls";
+import { logWorkoutDetailsAction, markWorkoutAction } from "./workout-actions";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -260,7 +262,13 @@ function WeekStrip({ days }: { days: Plan["weeks"][number]["days"] }) {
   );
 }
 
-export function WeeklyCalendar({ plan }: { plan: Plan }) {
+export function WeeklyCalendar({
+  plan,
+  workouts,
+}: {
+  plan: Plan;
+  workouts: Map<string, WorkoutLog>;
+}) {
   const themes = plan.narrative?.weeklyThemes;
   // Open the first week by default; others collapsed.
   return (
@@ -312,7 +320,14 @@ export function WeeklyCalendar({ plan }: { plan: Plan }) {
             )}
             <div className="divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
               {w.days.map((d) => (
-                <DaySummary key={d.dayOfWeek} dow={DOW[d.dayOfWeek] ?? `?`} session={d.session} />
+                <DaySummary
+                  key={d.dayOfWeek}
+                  dow={DOW[d.dayOfWeek] ?? `?`}
+                  weekIndex={w.weekIndex}
+                  dayOfWeek={d.dayOfWeek}
+                  session={d.session}
+                  log={workouts.get(`${w.weekIndex}-${d.dayOfWeek}`) ?? null}
+                />
               ))}
             </div>
           </details>
@@ -376,22 +391,222 @@ export function NarrativeSection({ plan }: { plan: Plan }) {
   );
 }
 
-function DaySummary({ dow, session }: { dow: string; session: SessionPrescription }) {
+function DaySummary({
+  dow,
+  weekIndex,
+  dayOfWeek,
+  session,
+  log,
+}: {
+  dow: string;
+  weekIndex: number;
+  dayOfWeek: number;
+  session: SessionPrescription;
+  log: WorkoutLog | null;
+}) {
+  const done = Boolean(log?.completedAt);
+  const actuals = log?.actuals?.exercises ?? [];
+
   return (
     <div className="grid grid-cols-[2.5rem_1fr] gap-3 px-3 py-2 text-sm sm:grid-cols-[3rem_1fr] sm:gap-4 sm:px-4 sm:py-3">
-      <div className="font-mono text-xs text-[var(--color-ink-3)]">{dow}</div>
+      <div className="flex flex-col items-start gap-1 pt-0.5">
+        <span className="font-mono text-xs text-[var(--color-ink-3)]">{dow}</span>
+        {done && (
+          <span
+            className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-accent)] text-[10px] text-[var(--color-accent-fg)]"
+            aria-label="completed"
+          >
+            ✓
+          </span>
+        )}
+      </div>
       <div>
-        <div className="font-medium text-[var(--color-ink)]">{session.title}</div>
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="font-medium text-[var(--color-ink)]">{session.title}</div>
+          {!done && session.sessionType !== "rest" && (
+            <form action={markWorkoutAction} className="print:hidden">
+              <input type="hidden" name="weekIndex" value={weekIndex} />
+              <input type="hidden" name="dayOfWeek" value={dayOfWeek} />
+              <input type="hidden" name="action" value="mark" />
+              <button
+                type="submit"
+                className="rounded-md border border-[var(--color-line)] bg-white px-2 py-0.5 text-[11px] text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                title="Mark this workout done"
+              >
+                ✓ Done
+              </button>
+            </form>
+          )}
+          {done && (
+            <form action={markWorkoutAction} className="print:hidden">
+              <input type="hidden" name="weekIndex" value={weekIndex} />
+              <input type="hidden" name="dayOfWeek" value={dayOfWeek} />
+              <input type="hidden" name="action" value="unmark" />
+              <button
+                type="submit"
+                className="text-[11px] text-[var(--color-ink-3)] hover:text-[var(--color-danger)]"
+                title="Undo completion"
+              >
+                undo
+              </button>
+            </form>
+          )}
+        </div>
         {session.main.length > 0 && (
           <ul className="mt-1 space-y-0.5 text-[var(--color-ink-2)]">
-            {session.main.map((ex, i) => (
-              <li key={i} className="font-mono text-[11px] leading-snug sm:text-xs">
-                {ex.name}: {ex.sets}×{ex.reps}
-                {ex.weightLb ? ` @ ${ex.weightLb} lb` : ""}
-                {ex.weightDescriptor && !ex.weightLb ? ` (${ex.weightDescriptor})` : ""}
-              </li>
-            ))}
+            {session.main.map((ex, i) => {
+              const act = actuals[i];
+              const actualWeight = act?.actualWeightLb;
+              const showActual =
+                act &&
+                ((actualWeight !== undefined && actualWeight !== ex.weightLb) ||
+                  (act.actualReps && act.actualReps !== String(ex.reps)) ||
+                  act.skipped);
+              return (
+                <li key={i} className="font-mono text-[11px] leading-snug sm:text-xs">
+                  {ex.name}: {ex.sets}×{ex.reps}
+                  {ex.weightLb ? ` @ ${ex.weightLb} lb` : ""}
+                  {ex.weightDescriptor && !ex.weightLb ? ` (${ex.weightDescriptor})` : ""}
+                  {showActual && (
+                    <span className="ml-2 text-[var(--color-accent)]">
+                      → {act?.skipped ? "skipped" : ""}
+                      {actualWeight !== undefined && actualWeight !== ex.weightLb
+                        ? ` ${actualWeight} lb`
+                        : ""}
+                      {act?.actualReps && act.actualReps !== String(ex.reps)
+                        ? ` ${act.actualReps} reps`
+                        : ""}
+                    </span>
+                  )}
+                  {act?.notes && (
+                    <span className="ml-2 italic text-[var(--color-ink-3)]">
+                      ({act.notes})
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
+        )}
+
+        {session.sessionType !== "rest" && (
+          <details className="mt-2 print:hidden">
+            <summary className="cursor-pointer text-[11px] text-[var(--color-ink-3)] hover:text-[var(--color-accent)] [&::-webkit-details-marker]:hidden">
+              {log?.actuals ? "Edit details" : "Log details"}
+            </summary>
+            <form
+              action={logWorkoutDetailsAction}
+              className="mt-2 space-y-2 rounded-md border border-[var(--color-line)] bg-[var(--color-bg-2)] p-3"
+            >
+              <input type="hidden" name="weekIndex" value={weekIndex} />
+              <input type="hidden" name="dayOfWeek" value={dayOfWeek} />
+
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[480px] text-[11px]">
+                  <thead>
+                    <tr className="text-left text-[var(--color-ink-3)]">
+                      <th className="py-1 pr-2 font-normal">Exercise</th>
+                      <th className="py-1 px-1 font-normal">Actual lb</th>
+                      <th className="py-1 px-1 font-normal">Actual reps</th>
+                      <th className="py-1 px-1 font-normal">Skip</th>
+                      <th className="py-1 pl-1 font-normal">Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {session.main.map((ex, i) => {
+                      const act = actuals[i];
+                      return (
+                        <tr key={i} className="border-t border-[var(--color-line)]">
+                          <td className="py-1 pr-2 align-top font-mono text-[var(--color-ink-2)]">
+                            {ex.name}
+                            <div className="text-[10px] text-[var(--color-ink-3)]">
+                              prescribed {ex.sets}×{ex.reps}
+                              {ex.weightLb ? ` @ ${ex.weightLb}` : ""}
+                            </div>
+                          </td>
+                          <td className="py-1 px-1 align-top">
+                            <input
+                              type="number"
+                              name={`ex_${i}_weight`}
+                              defaultValue={act?.actualWeightLb ?? ex.weightLb ?? ""}
+                              min={0}
+                              max={700}
+                              className="w-16 rounded border border-[var(--color-line)] bg-white px-1 py-0.5"
+                            />
+                          </td>
+                          <td className="py-1 px-1 align-top">
+                            <input
+                              type="text"
+                              name={`ex_${i}_reps`}
+                              defaultValue={act?.actualReps ?? ""}
+                              placeholder={String(ex.reps)}
+                              maxLength={40}
+                              className="w-20 rounded border border-[var(--color-line)] bg-white px-1 py-0.5"
+                            />
+                          </td>
+                          <td className="py-1 px-1 align-top">
+                            <input
+                              type="checkbox"
+                              name={`ex_${i}_skipped`}
+                              defaultChecked={act?.skipped ?? false}
+                              className="h-4 w-4 rounded border-[var(--color-line)] text-[var(--color-accent)]"
+                            />
+                          </td>
+                          <td className="py-1 pl-1 align-top">
+                            <input
+                              type="text"
+                              name={`ex_${i}_notes`}
+                              defaultValue={act?.notes ?? ""}
+                              maxLength={300}
+                              className="w-full min-w-[8rem] rounded border border-[var(--color-line)] bg-white px-1 py-0.5"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[120px_1fr]">
+                <label className="block">
+                  <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+                    RPE 1-10
+                  </span>
+                  <input
+                    type="number"
+                    name="rpe"
+                    min={1}
+                    max={10}
+                    defaultValue={log?.rpe ?? ""}
+                    className="mt-0.5 block w-full rounded border border-[var(--color-line)] bg-white px-2 py-1 text-xs"
+                  />
+                </label>
+                <label className="block">
+                  <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+                    Session note
+                  </span>
+                  <input
+                    type="text"
+                    name="notes"
+                    defaultValue={log?.notes ?? ""}
+                    placeholder="Felt strong, calf tight, etc."
+                    maxLength={400}
+                    className="mt-0.5 block w-full rounded border border-[var(--color-line)] bg-white px-2 py-1 text-xs"
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="submit"
+                  className="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[11px] font-medium text-[var(--color-accent-fg)] hover:opacity-90"
+                >
+                  Save log
+                </button>
+              </div>
+            </form>
+          </details>
         )}
       </div>
     </div>
