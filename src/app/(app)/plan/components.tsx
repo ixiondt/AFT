@@ -1,5 +1,6 @@
 import { secToMmss } from "@/lib/scoring";
-import type { BlockName, Plan, SessionPrescription } from "@/lib/planner";
+import type { BlockName, Plan, SessionPrescription, SessionType } from "@/lib/planner";
+import { WeekControls } from "./week-controls";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -220,38 +221,101 @@ export function CheckpointList({ plan }: { plan: Plan }) {
   );
 }
 
+const SESSION_BADGE: Record<SessionType, { short: string; bg: string; fg: string }> = {
+  strength_a: { short: "SA", bg: "oklch(0.55 0.12 145)", fg: "white" },
+  strength_b: { short: "SB", bg: "oklch(0.6 0.1 145)", fg: "white" },
+  intervals: { short: "Int", bg: "oklch(0.55 0.16 25)", fg: "white" },
+  tempo: { short: "Tmp", bg: "oklch(0.62 0.14 60)", fg: "white" },
+  long: { short: "Long", bg: "oklch(0.7 0.09 145)", fg: "white" },
+  aft_skills: { short: "Skl", bg: "oklch(0.55 0.1 270)", fg: "white" },
+  sdc: { short: "SDC", bg: "oklch(0.5 0.14 270)", fg: "white" },
+  recovery: { short: "Rec", bg: "oklch(0.92 0.005 250)", fg: "var(--color-ink-2)" },
+  rest: { short: "Rst", bg: "oklch(0.96 0.003 250)", fg: "var(--color-ink-3)" },
+};
+
+function WeekStrip({ days }: { days: Plan["weeks"][number]["days"] }) {
+  return (
+    <div className="flex gap-1">
+      {days.map((d) => {
+        const badge = SESSION_BADGE[d.session.sessionType];
+        return (
+          <span
+            key={d.dayOfWeek}
+            title={`${DOW[d.dayOfWeek] ?? "?"} · ${d.session.title}`}
+            style={{
+              background: badge.bg,
+              color: badge.fg,
+              printColorAdjust: "exact",
+              WebkitPrintColorAdjust: "exact",
+            }}
+            className="grid h-7 min-w-[3.25rem] flex-1 place-items-center rounded-md text-[10px] font-mono uppercase tracking-wider"
+          >
+            <span className="px-1">
+              {DOW[d.dayOfWeek]?.[0] ?? "?"}·{badge.short}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export function WeeklyCalendar({ plan }: { plan: Plan }) {
   const themes = plan.narrative?.weeklyThemes;
+  // Open the first week by default; others collapsed.
   return (
     <section className="print-break-before">
-      <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
-        Week-by-week
-      </h2>
-      <div className="mt-3 space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
+          Week-by-week
+        </h2>
+        <WeekControls />
+      </div>
+
+      <div className="mt-3 space-y-3">
         {plan.weeks.map((w) => (
-          <div
+          <details
             key={w.weekIndex}
-            className="rounded-md border border-[var(--color-line)] bg-white print-keep"
+            open={w.weekIndex === 0}
+            className="aft-week group rounded-md border border-[var(--color-line)] bg-white print-keep open:shadow-sm"
           >
-            <div className="flex items-baseline justify-between border-b border-[var(--color-line)] px-4 py-2">
-              <h3 className="font-semibold">
-                Week {w.weekIndex + 1}{" "}
-                <span className="ml-2 text-xs font-normal text-[var(--color-ink-3)]">
-                  {w.block}
+            <summary className="cursor-pointer list-none px-4 py-2 [&::-webkit-details-marker]:hidden">
+              <div className="flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="grid h-5 w-5 shrink-0 place-items-center text-[var(--color-ink-3)] transition-transform group-open:rotate-90"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+                    <path d="M3 1 L7 5 L3 9 Z" />
+                  </svg>
                 </span>
-              </h3>
-            </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between">
+                    <h3 className="font-semibold text-[var(--color-ink)]">
+                      Week {w.weekIndex + 1}{" "}
+                      <span className="ml-2 text-xs font-normal text-[var(--color-ink-3)]">
+                        {w.block}
+                      </span>
+                    </h3>
+                  </div>
+                  <div className="mt-1 group-open:hidden">
+                    <WeekStrip days={w.days} />
+                  </div>
+                </div>
+              </div>
+            </summary>
+
             {themes?.[w.weekIndex] && (
-              <p className="border-b border-[var(--color-line)] bg-[var(--color-bg-2)] px-4 py-2 text-sm italic text-[var(--color-ink-2)]">
+              <p className="border-t border-[var(--color-line)] bg-[var(--color-bg-2)] px-4 py-2 text-sm italic text-[var(--color-ink-2)]">
                 {themes[w.weekIndex]}
               </p>
             )}
-            <div className="divide-y divide-[var(--color-line)]">
+            <div className="divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]">
               {w.days.map((d) => (
                 <DaySummary key={d.dayOfWeek} dow={DOW[d.dayOfWeek] ?? `?`} session={d.session} />
               ))}
             </div>
-          </div>
+          </details>
         ))}
       </div>
     </section>
