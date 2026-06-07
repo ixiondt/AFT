@@ -47,10 +47,13 @@ export default async function BodyPage() {
       {!profile?.heightIn ? (
         <HeightSetup />
       ) : (
-        <CurrentSummary
-          profile={profile}
-          latest={latest ?? null}
-        />
+        <>
+          <HeightEditor currentHeight={profile.heightIn} />
+          <CurrentSummary
+            profile={profile}
+            latest={latest ?? null}
+          />
+        </>
       )}
 
       {profile?.heightIn && (
@@ -71,6 +74,52 @@ export default async function BodyPage() {
         legacy multi-site number for comparison while Guard units transition.
       </footer>
     </main>
+  );
+}
+
+function HeightEditor({ currentHeight }: { currentHeight: number }) {
+  return (
+    <details className="mt-4 rounded-md border border-[var(--color-line)] bg-[var(--color-bg-2)]">
+      <summary className="flex cursor-pointer items-center justify-between px-4 py-2 text-xs text-[var(--color-ink-2)] hover:text-[var(--color-ink)] [&::-webkit-details-marker]:hidden">
+        <span>
+          Height:{" "}
+          <span className="font-mono text-sm text-[var(--color-ink)]">
+            {currentHeight}″
+          </span>
+        </span>
+        <span className="text-[10px] uppercase tracking-wider text-[var(--color-accent)]">
+          Edit
+        </span>
+      </summary>
+      <form
+        action={setHeightAction}
+        className="flex flex-wrap items-end gap-2 border-t border-[var(--color-line)] px-4 py-3"
+      >
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            Height (inches)
+          </span>
+          <input
+            type="number"
+            name="heightIn"
+            min={48}
+            max={96}
+            required
+            defaultValue={currentHeight}
+            className="mt-0.5 block w-24 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
+          />
+        </label>
+        <button
+          type="submit"
+          className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium text-[var(--color-accent-fg)] hover:opacity-90"
+        >
+          Save
+        </button>
+        <p className="ml-auto text-[10px] text-[var(--color-ink-3)]">
+          Used for WHtR + BF% calculations.
+        </p>
+      </form>
+    </details>
   );
 }
 
