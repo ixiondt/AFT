@@ -66,12 +66,19 @@ export default async function BodyPage() {
       <History log={log} profile={profile ?? null} />
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
-        Male body fat % uses the current Army single-site abdominal method
-        (AR 600-9 update, effective Jan 2024 — no neck measurement required).
-        Female body fat % uses the multi-site Hodgdon-Beckett formula
-        (waist + hip + neck). WHtR thresholds per WHO + NIH (PMC5118501).
-        If you log a neck circumference, the history table also surfaces the
-        legacy multi-site number for comparison while Guard units transition.
+        Body fat % uses the current Army single-site standard
+        (ALARACT 053/2024, effective 9 Jun 2024): weight + abdominal
+        circumference at the navel.
+        <br />
+        Male: <span className="font-mono">%BF = -26.97 - 0.12·weight + 1.99·abdomen</span>
+        <br />
+        Female: <span className="font-mono">%BF = -9.15 - 0.015·weight + 1.27·abdomen</span>
+        <br />
+        Height isn't in the BF% formula — it's only used for WHtR (waist/height,
+        thresholds per WHO + NIH PMC5118501). Age sets the pass/fail max, not
+        the calculation. If you log neck (and hip, for women), the history
+        table surfaces the legacy Hodgdon-Beckett multi-site number as a
+        second column for comparison.
       </footer>
     </main>
   );
@@ -178,8 +185,7 @@ function CurrentSummary({
   const bf = latest
     ? tapeBodyFatPct({
         sex: profile.sex,
-        age: profile.age,
-        heightIn,
+        weightLb: latest.weightLb,
         measurements: latest.measurements ?? {},
       })
     : null;
@@ -249,17 +255,15 @@ function CurrentSummary({
             <p className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
               Army max: {bfMax}% (age {profile.age}, {profile.sex})
             </p>
-            {profile.sex === "MC" && (
-              <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
-                Single-site abdomen (current standard)
-              </p>
-            )}
+            <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
+              Single-site (abdomen + weight)
+            </p>
           </>
         ) : (
           <>
             <NoData />
             <p className="mt-1 text-[10px] text-[var(--color-ink-3)]">
-              Log {profile.sex === "MC" ? "abdomen" : "waist + hip + neck"}
+              Log abdomen at navel
             </p>
           </>
         )}
@@ -312,37 +316,39 @@ function LogForm({
             max={600}
             required
           />
-          {sex === "MC" ? (
-            <>
-              <Field
-                name="abdomenIn"
-                label="Abdomen at navel (in)"
-                defaultValue={prefill.abdomenIn}
-                step={0.1}
-                min={20}
-                max={70}
-                hint="New Army standard"
-              />
-              {/* Keep neck visible only as a collapsible "for legacy multi-site" hint. */}
-            </>
-          ) : (
-            <>
-              <Field
-                name="waistIn"
-                label="Waist (in)"
-                defaultValue={prefill.waistIn}
-                step={0.1}
-                min={20}
-                max={70}
-              />
-              <Field
-                name="neckIn"
-                label="Neck (in)"
-                defaultValue={prefill.neckIn}
-                step={0.1}
-                min={10}
-                max={25}
-              />
+          <Field
+            name="abdomenIn"
+            label="Abdomen at navel (in)"
+            defaultValue={prefill.abdomenIn}
+            step={0.1}
+            min={20}
+            max={70}
+            hint="Current Army standard"
+          />
+        </div>
+        <details className="text-xs text-[var(--color-ink-3)]">
+          <summary className="cursor-pointer hover:text-[var(--color-ink-2)]">
+            Optional: log waist {sex === "F" ? "+ hip + neck" : "+ neck"} for the
+            legacy multi-site number
+          </summary>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Field
+              name="waistIn"
+              label="Waist (in)"
+              defaultValue={prefill.waistIn}
+              step={0.1}
+              min={20}
+              max={70}
+            />
+            <Field
+              name="neckIn"
+              label="Neck (in)"
+              defaultValue={prefill.neckIn}
+              step={0.1}
+              min={10}
+              max={25}
+            />
+            {sex === "F" && (
               <Field
                 name="hipIn"
                 label="Hip (in)"
@@ -351,26 +357,9 @@ function LogForm({
                 min={25}
                 max={80}
               />
-            </>
-          )}
-        </div>
-        {sex === "MC" && (
-          <details className="text-xs text-[var(--color-ink-3)]">
-            <summary className="cursor-pointer hover:text-[var(--color-ink-2)]">
-              Optional: log neck for the legacy multi-site number
-            </summary>
-            <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Field
-                name="neckIn"
-                label="Neck (in)"
-                defaultValue={prefill.neckIn}
-                step={0.1}
-                min={10}
-                max={25}
-              />
-            </div>
-          </details>
-        )}
+            )}
+          </div>
+        </details>
         <label className="block">
           <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
             Notes (optional)
@@ -476,8 +465,7 @@ function History({
               const bf = profile
                 ? tapeBodyFatPct({
                     sex: profile.sex,
-                    age: profile.age,
-                    heightIn,
+                    weightLb: e.weightLb,
                     measurements: e.measurements ?? {},
                   })
                 : null;

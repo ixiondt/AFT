@@ -3,18 +3,14 @@
  *
  * - **WHtR** (Waist-to-Height Ratio): simple waist/height. Reference: WHO 2008
  *   + 2024 NIH (PMC5118501). Healthy < 0.5.
- * - **Body fat %**:
- *   - **Male — Army single-site (current standard, AR 600-9 update Jan 2024):**
- *     Single abdominal circumference at the navel. No neck.
- *     %BF ≈ 0.74·abdomen − 0.34·height + 0.10·age + 14.43 (inches/years)
- *   - **Female — multi-site tape (Hodgdon-Beckett, still current):**
- *     %BF = 163.205·log10(waist + hip − neck) − 97.684·log10(height) − 78.387
- *
- * The single-site male formula is an inches-unit approximation of the
- * abdomen/height/age regression the Army adopted with the new ABCP. Guard
- * units waiting for guidance commonly still use the Hodgdon-Beckett
- * abdomen−neck/height multi-site formula — we expose that too via
- * tapeBodyFatPctMultiSite() in case you want the legacy number for comparison.
+ * - **Army body fat %** (single-site, ALARACT 053/2024, effective 9 Jun 2024):
+ *     Male:   %BF = -26.97 - 0.12·weight_lb + 1.99·abdomen_in
+ *     Female: %BF =  -9.15 - 0.015·weight_lb + 1.27·abdomen_in
+ *   Height is NOT in the BF% formula (only used here for WHtR). Age is NOT in
+ *   the formula either — it only sets the pass/fail max via armyBodyFatMaxPct.
+ * - **Legacy multi-site (Hodgdon-Beckett)** — what Guard units used before
+ *   the 2024 update; still exposed via tapeBodyFatPctMultiSite() for
+ *   comparison while units transition.
  */
 
 export type Sex = "MC" | "F";
@@ -54,39 +50,28 @@ export function whtRBandLabel(band: WhtRBand): string {
 }
 
 /**
- * Body fat % using the current Army standard.
- * - Male: single-site (abdomen + height + age). NO neck required.
- * - Female: multi-site (waist + hip + neck + height).
- * Returns null if the required inputs for the given sex are missing.
+ * Body fat % using the current Army single-site standard
+ * (ALARACT 053/2024, effective 9 Jun 2024). Both sexes use the same shape:
+ * a regression on bodyweight (lb) + abdominal circumference at the navel (in).
+ * Height and age are NOT inputs to the formula itself.
+ *
+ * Returns null if either weight or abdomen is missing.
  */
 export function tapeBodyFatPct(args: {
   sex: Sex;
-  age?: number;
-  heightIn: number | undefined;
+  weightLb: number | undefined;
   measurements: Measurements;
 }): number | null {
-  const { sex, age, heightIn, measurements } = args;
-  if (!heightIn || heightIn <= 0) return null;
-  const m = measurements;
+  const { sex, weightLb, measurements } = args;
+  if (!weightLb || weightLb <= 0) return null;
+  const abdomen = measurements.abdomenIn ?? measurements.waistIn;
+  if (!abdomen || abdomen <= 0) return null;
 
-  if (sex === "MC") {
-    // Single-site: abdomen at the navel + height + age.
-    const abdomen = m.abdomenIn ?? m.waistIn;
-    if (!abdomen) return null;
-    const ageVal = typeof age === "number" && age > 0 ? age : 30;
-    const bf = 0.74 * abdomen - 0.34 * heightIn + 0.10 * ageVal + 14.43;
-    return roundOne(Math.max(0, Math.min(60, bf)));
-  }
-  // Female multi-site stays as Hodgdon-Beckett (still current).
-  const waist = m.waistIn;
-  const hip = m.hipIn;
-  const neck = m.neckIn;
-  if (!waist || !hip || !neck) return null;
-  if (waist + hip <= neck) return null;
   const bf =
-    163.205 * Math.log10(waist + hip - neck) -
-    97.684 * Math.log10(heightIn) -
-    78.387;
+    sex === "MC"
+      ? -26.97 - 0.12 * weightLb + 1.99 * abdomen
+      : -9.15 - 0.015 * weightLb + 1.27 * abdomen;
+
   return roundOne(Math.max(0, Math.min(60, bf)));
 }
 
