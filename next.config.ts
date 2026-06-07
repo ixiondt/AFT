@@ -14,7 +14,12 @@ const config: NextConfig = {
   reactStrictMode: true,
   // The scoring JSON, drizzle/, and migrate script must ship with the standalone bundle.
   outputFileTracingIncludes: {
-    "/**/*": ["./data/**/*.json", "./drizzle/**/*", "./scripts/migrate.mjs"],
+    "/**/*": [
+      "./data/**/*.json",
+      "./data/**/*.pdf",
+      "./drizzle/**/*",
+      "./scripts/migrate.mjs",
+    ],
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
