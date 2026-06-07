@@ -314,14 +314,14 @@ export function NarrativeSection({ plan }: { plan: Plan }) {
 
 function DaySummary({ dow, session }: { dow: string; session: SessionPrescription }) {
   return (
-    <div className="grid grid-cols-[3rem_1fr] gap-4 px-4 py-3 text-sm">
+    <div className="grid grid-cols-[2.5rem_1fr] gap-3 px-3 py-2 text-sm sm:grid-cols-[3rem_1fr] sm:gap-4 sm:px-4 sm:py-3">
       <div className="font-mono text-xs text-[var(--color-ink-3)]">{dow}</div>
       <div>
         <div className="font-medium text-[var(--color-ink)]">{session.title}</div>
         {session.main.length > 0 && (
           <ul className="mt-1 space-y-0.5 text-[var(--color-ink-2)]">
             {session.main.map((ex, i) => (
-              <li key={i} className="font-mono text-xs">
+              <li key={i} className="font-mono text-[11px] leading-snug sm:text-xs">
                 {ex.name}: {ex.sets}×{ex.reps}
                 {ex.weightLb ? ` @ ${ex.weightLb} lb` : ""}
                 {ex.weightDescriptor && !ex.weightLb ? ` (${ex.weightDescriptor})` : ""}
