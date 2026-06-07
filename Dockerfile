@@ -41,6 +41,13 @@ COPY --from=builder /app/scripts/migrate.mjs ./scripts/migrate.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Next.js standalone tracing doesn't include drizzle-orm/postgres-js/migrator
+# (it's only imported by scripts/migrate.mjs, which isn't a Next.js route).
+# Overlay the full versions from the deps stage so the migration container can
+# resolve them. Each ~1-2 MB.
+COPY --from=deps /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=deps /app/node_modules/postgres ./node_modules/postgres
+
 # Add curl for healthcheck inside the container (small package, ~1.5 MB)
 RUN apk add --no-cache curl
 
