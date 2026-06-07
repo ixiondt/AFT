@@ -1,4 +1,5 @@
 import { blockForWeek } from "./periodization";
+import { catalogItemAsExerciseRow, pickFromCatalog } from "./catalog";
 import { hasSdcGear, makeSdcSession } from "./sdc";
 import type {
   Block,
@@ -100,10 +101,12 @@ const SDC_PROXY_NOTE = (shuttles: number, sprintM: number, kbWt: number) =>
 
 function build_strength_a(args: {
   ladder: MdlLadderWeek;
+  weekIndex: number;
   preferences: Preferences;
   injuries: readonly Injury[];
+  equipment: readonly Equipment[];
 }): SessionPrescription {
-  const { ladder, preferences, injuries } = args;
+  const { ladder, weekIndex, preferences, injuries, equipment } = args;
   const sets = ladder.sets.map<ExerciseRow>((s, i) => ({
     name: i === 0 ? injurySwap("Deadlift (conventional)", injuries) : "Deadlift",
     sets: 1,
@@ -111,17 +114,15 @@ function build_strength_a(args: {
     weightLb: s.weightLb,
     weightDescriptor: `${s.weightLb} lb`,
   }));
-  const accessories: ExerciseRow[] = preferences.calisthenicsPreferred
-    ? [
-        { name: "Strict pull-ups (or eccentric if 0)", sets: 4, reps: "4–8" },
-        { name: "Single-leg RDL (bodyweight)", sets: 3, reps: "8/side" },
-        { name: "Hollow body hold", sets: 3, reps: "30s" },
-      ]
-    : [
-        { name: "Romanian deadlift", sets: 3, reps: 8, weightDescriptor: "60% of MDL working set" },
-        { name: "Barbell row", sets: 3, reps: 8, weightDescriptor: "moderate" },
-        { name: "Hollow body hold", sets: 3, reps: "30s" },
-      ];
+
+  const ctx = { equipment, injuries, calisthenicsPreferred: preferences.calisthenicsPreferred };
+  const accessories: ExerciseRow[] = [
+    pickFromCatalog("accessory_pull", ctx, weekIndex),
+    pickFromCatalog("accessory_hinge", ctx, weekIndex + 1),
+    pickFromCatalog("accessory_core", ctx, weekIndex + 2),
+  ]
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .map((x) => catalogItemAsExerciseRow(x));
 
   return {
     sessionType: "strength_a",
@@ -144,42 +145,49 @@ function build_strength_b(args: {
   bodyweightLb: number;
   preferences: Preferences;
   injuries: readonly Injury[];
+  equipment: readonly Equipment[];
   hrp: HrpProgressionWeek;
 }): SessionPrescription {
-  const { weekIndex, blocks, bodyweightLb, preferences, injuries, hrp } = args;
-  const squat = squatPrescription(bodyweightLb, weekIndex, blocks);
-  const main: ExerciseRow[] = preferences.calisthenicsPreferred
-    ? [
-        {
-          name: injurySwap("Bulgarian split squat (bodyweight or DB)", injuries),
-          sets: 4,
-          reps: "8/side",
-        },
-        { name: "Pistol-progression squat", sets: 3, reps: "5/side" },
-        { name: "Dips (rings or bar)", sets: 4, reps: "6–10" },
-        ...hrp.setsReps.map<ExerciseRow>((sr) => ({
-          name: injurySwap("Hand-release push-up", injuries),
-          sets: sr.sets,
-          reps: sr.reps,
-        })),
-        { name: "Bird-dog (slow)", sets: 3, reps: "8/side" },
-      ]
-    : [
-        {
-          name: injurySwap("Back squat", injuries),
-          sets: squat.sets,
-          reps: squat.reps,
-          weightLb: squat.weightLb,
-          weightDescriptor: `${squat.weightLb} lb`,
-        },
-        { name: "Walking lunge (DB)", sets: 3, reps: "10/side", weightDescriptor: "25–40 lb DBs" },
-        { name: "Kettlebell swing", sets: 4, reps: "12", weightDescriptor: "53 lb / 24 kg" },
-        ...hrp.setsReps.map<ExerciseRow>((sr) => ({
-          name: "Hand-release push-up",
-          sets: sr.sets,
-          reps: sr.reps,
-        })),
-      ];
+  const { weekIndex, blocks, bodyweightLb, preferences, injuries, equipment, hrp } = args;
+  const ctx = { equipment, injuries, calisthenicsPreferred: preferences.calisthenicsPreferred };
+
+  // Pick from catalog, but apply the prescription's volume rules
+  const squatUni = pickFromCatalog("accessory_squat_uni", ctx, weekIndex);
+  const pushAccessory = pickFromCatalog("accessory_push", ctx, weekIndex + 1);
+  const coreAccessory = pickFromCatalog("accessory_core", ctx, weekIndex + 3);
+
+  const main: ExerciseRow[] = [];
+
+  if (preferences.calisthenicsPreferred) {
+    if (squatUni) main.push(catalogItemAsExerciseRow(squatUni));
+    const explosive = pickFromCatalog("accessory_explosive", ctx, weekIndex + 2);
+    if (explosive) main.push(catalogItemAsExerciseRow(explosive));
+    if (pushAccessory) main.push(catalogItemAsExerciseRow(pushAccessory));
+  } else {
+    const squat = squatPrescription(bodyweightLb, weekIndex, blocks);
+    main.push({
+      name: injurySwap("Back squat", injuries),
+      sets: squat.sets,
+      reps: squat.reps,
+      weightLb: squat.weightLb,
+      weightDescriptor: `${squat.weightLb} lb`,
+    });
+    if (squatUni) main.push(catalogItemAsExerciseRow(squatUni));
+    const hingeOrCarry = pickFromCatalog("accessory_carry", ctx, weekIndex + 2) ??
+      pickFromCatalog("accessory_hinge", ctx, weekIndex + 2);
+    if (hingeOrCarry) main.push(catalogItemAsExerciseRow(hingeOrCarry));
+  }
+
+  // HRP is always present — it's a tested event
+  for (const sr of hrp.setsReps) {
+    main.push({
+      name: injurySwap("Hand-release push-up", injuries),
+      sets: sr.sets,
+      reps: sr.reps,
+    });
+  }
+
+  if (coreAccessory) main.push(catalogItemAsExerciseRow(coreAccessory));
 
   return {
     sessionType: "strength_b",
@@ -386,8 +394,10 @@ export function buildWeekDays(args: {
       case "strength_a":
         session = build_strength_a({
           ladder,
+          weekIndex,
           preferences: input.preferences,
           injuries: input.injuries,
+          equipment: input.equipment,
         });
         break;
       case "strength_b":
@@ -397,6 +407,7 @@ export function buildWeekDays(args: {
           bodyweightLb: input.bodyweightLb,
           preferences: input.preferences,
           injuries: input.injuries,
+          equipment: input.equipment,
           hrp,
         });
         break;
