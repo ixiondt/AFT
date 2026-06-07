@@ -94,6 +94,8 @@ export const profiles = pgTable(
     age: integer("age").notNull(),
     sex: text("sex", { enum: ["MC", "F"] }).notNull(),
     bodyweightLb: integer("bodyweight_lb").notNull(),
+    /** Whole inches. Optional — only required for body-comp calculations. */
+    heightIn: integer("height_in"),
     daysPerWeek: integer("days_per_week").notNull(), // 3-6
     equipment: jsonb("equipment").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     injuries: jsonb("injuries").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
@@ -193,6 +195,16 @@ export const weightLogs = pgTable(
     planId: uuid("plan_id")
       .references(() => plans.id, { onDelete: "set null" }),
     weightLb: integer("weight_lb").notNull(),
+    /**
+     * Optional body-comp measurements at this weigh-in. All values in inches.
+     * Stored verbatim so we can recompute BF% / WHtR if the formulas change.
+     */
+    measurements: jsonb("measurements").$type<{
+      waistIn?: number;
+      neckIn?: number;
+      hipIn?: number;
+      abdomenIn?: number;
+    }>(),
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
     notes: text("notes"),
   },

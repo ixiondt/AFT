@@ -6,6 +6,12 @@ export type WeightLogEntry = {
   weightLb: number;
   recordedAt: string; // ISO
   notes: string | null;
+  measurements: {
+    waistIn?: number;
+    neckIn?: number;
+    hipIn?: number;
+    abdomenIn?: number;
+  } | null;
 };
 
 export async function loadWeightLog(args: {
@@ -26,6 +32,7 @@ export async function loadWeightLog(args: {
     weightLb: r.weightLb,
     recordedAt: r.recordedAt.toISOString(),
     notes: r.notes,
+    measurements: r.measurements ?? null,
   }));
 }
 
@@ -35,10 +42,24 @@ export async function logWeight(args: {
   weightLb: number;
   recordedAt?: Date;
   notes?: string;
+  measurements?: {
+    waistIn?: number;
+    neckIn?: number;
+    hipIn?: number;
+    abdomenIn?: number;
+  };
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const { userId, planId, weightLb, notes } = args;
+  const { userId, planId, weightLb, notes, measurements } = args;
   if (!Number.isInteger(weightLb) || weightLb < 60 || weightLb > 600) {
     return { ok: false, error: "Weight must be an integer between 60 and 600 lb" };
+  }
+  // Strip empty measurement object → null so we don't store {}
+  let measurementsToSave: typeof measurements | null = null;
+  if (measurements) {
+    const hasAny = Object.values(measurements).some(
+      (v) => typeof v === "number" && v > 0,
+    );
+    if (hasAny) measurementsToSave = measurements;
   }
   const [row] = await db
     .insert(schema.weightLogs)
@@ -48,6 +69,7 @@ export async function logWeight(args: {
       weightLb,
       ...(args.recordedAt ? { recordedAt: args.recordedAt } : {}),
       ...(notes ? { notes } : {}),
+      ...(measurementsToSave ? { measurements: measurementsToSave } : {}),
     })
     .returning({ id: schema.weightLogs.id });
   if (!row) return { ok: false, error: "Could not save" };

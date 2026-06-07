@@ -31,6 +31,7 @@ export async function generatePlanAction(formData: FormData): Promise<void> {
     sex: formData.get("sex"),
     bodyweightLb: formData.get("bodyweightLb"),
     goalBodyweightLb: formData.get("goalBodyweightLb"),
+    heightIn: formData.get("heightIn"),
     daysPerWeek: formData.get("daysPerWeek"),
     durationWeeks: formData.get("durationWeeks"),
     testDate: formData.get("testDate"),
