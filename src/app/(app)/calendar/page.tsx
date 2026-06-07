@@ -275,77 +275,123 @@ export default async function CalendarPage({
         })}
       </div>
 
-      {/* Selected day detail */}
+      {/* Selected day overlay */}
       {selectedDate && (
-        <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">
-          <header className="flex items-baseline justify-between">
-            <div>
-              <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-3)]">
-                {selectedDate.toLocaleString("en-US", {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                  timeZone: "UTC",
-                })}
-              </p>
-              {selected && (
-                <h2 className="mt-1 text-lg font-semibold text-[var(--color-ink)]">
-                  {selected.session.title}
-                </h2>
-              )}
-            </div>
-            {selected && (
-              <span className="text-xs text-[var(--color-ink-3)]">
-                Week {selected.weekIndex + 1} · {WEEKDAY_SHORT[selected.dayOfWeek]}
-              </span>
-            )}
-          </header>
-
-          {!selected ? (
-            <p className="mt-3 text-sm text-[var(--color-ink-3)]">
-              No session scheduled for this date — it's outside the plan window.
-            </p>
-          ) : (
-            <>
-              {selected.session.warmup.length > 0 && (
-                <DetailBlock label="Warm-up" items={selected.session.warmup} />
-              )}
-              {selected.session.main.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-3)]">
-                    Main
-                  </h3>
-                  <ul className="mt-1 space-y-0.5 font-mono text-xs text-[var(--color-ink-2)]">
-                    {selected.session.main.map((ex, i) => (
-                      <li key={i}>
-                        {ex.name}: {ex.sets}×{ex.reps}
-                        {ex.weightLb ? ` @ ${ex.weightLb} lb` : ""}
-                        {ex.weightDescriptor && !ex.weightLb
-                          ? ` (${ex.weightDescriptor})`
-                          : ""}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {selected.session.cooldown.length > 0 && (
-                <DetailBlock label="Cool-down" items={selected.session.cooldown} />
-              )}
-              {selected.session.notes && selected.session.notes.length > 0 && (
-                <DetailBlock label="Notes" items={selected.session.notes} />
-              )}
-              <Link
-                href="/plan"
-                className="mt-4 inline-block text-xs text-[var(--color-accent)] hover:underline"
-              >
-                Log on /plan →
-              </Link>
-            </>
-          )}
-        </section>
+        <DayOverlay
+          closeHref={`/calendar?m=${ym(monthStart)}`}
+          dateLabel={selectedDate.toLocaleString("en-US", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "UTC",
+          })}
+          selected={selected}
+        />
       )}
     </main>
+  );
+}
+
+function DayOverlay({
+  closeHref,
+  dateLabel,
+  selected,
+}: {
+  closeHref: string;
+  dateLabel: string;
+  selected: PlanDayLookup;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Day detail"
+      className="fixed inset-0 z-40 flex items-end justify-center p-0 sm:items-center sm:p-6"
+    >
+      {/* Backdrop link — clicking closes the overlay */}
+      <Link
+        href={closeHref}
+        aria-label="Close"
+        scroll={false}
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      />
+
+      {/* Card */}
+      <div className="relative z-10 max-h-[85vh] w-full overflow-y-auto rounded-t-2xl border border-[var(--color-line)] bg-white p-5 shadow-xl sm:max-w-xl sm:rounded-2xl">
+        <header className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-3)]">
+              {dateLabel}
+            </p>
+            {selected ? (
+              <h2 className="mt-1 truncate text-lg font-semibold text-[var(--color-ink)]">
+                {selected.session.title}
+              </h2>
+            ) : (
+              <h2 className="mt-1 text-lg font-semibold text-[var(--color-ink-3)]">
+                Outside plan window
+              </h2>
+            )}
+            {selected && (
+              <p className="text-xs text-[var(--color-ink-3)]">
+                Week {selected.weekIndex + 1} · {WEEKDAY_SHORT[selected.dayOfWeek === 6 ? 0 : selected.dayOfWeek + 1]}
+              </p>
+            )}
+          </div>
+          <Link
+            href={closeHref}
+            aria-label="Close"
+            scroll={false}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--color-ink-3)] hover:bg-[var(--color-bg-2)] hover:text-[var(--color-ink)]"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </Link>
+        </header>
+
+        {!selected ? (
+          <p className="mt-3 text-sm text-[var(--color-ink-3)]">
+            No session scheduled for this date.
+          </p>
+        ) : (
+          <>
+            {selected.session.warmup.length > 0 && (
+              <DetailBlock label="Warm-up" items={selected.session.warmup} />
+            )}
+            {selected.session.main.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-3)]">
+                  Main
+                </h3>
+                <ul className="mt-1 space-y-0.5 font-mono text-xs text-[var(--color-ink-2)]">
+                  {selected.session.main.map((ex, i) => (
+                    <li key={i}>
+                      {ex.name}: {ex.sets}×{ex.reps}
+                      {ex.weightLb ? ` @ ${ex.weightLb} lb` : ""}
+                      {ex.weightDescriptor && !ex.weightLb ? ` (${ex.weightDescriptor})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {selected.session.cooldown.length > 0 && (
+              <DetailBlock label="Cool-down" items={selected.session.cooldown} />
+            )}
+            {selected.session.notes && selected.session.notes.length > 0 && (
+              <DetailBlock label="Notes" items={selected.session.notes} />
+            )}
+            <Link
+              href="/plan"
+              className="mt-5 inline-block rounded-lg bg-[var(--color-accent)] px-4 py-2 text-xs font-medium text-[var(--color-accent-fg)] hover:opacity-90"
+            >
+              Log on /plan →
+            </Link>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
