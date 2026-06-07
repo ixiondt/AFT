@@ -6,6 +6,7 @@ import type { Plan } from "@/lib/planner";
 import { env } from "@/lib/env";
 import { loadChatHistory } from "@/lib/aft/chat-service";
 import { loadWeightLog } from "@/lib/aft/weight-service";
+import { loadWorkoutsForPlan } from "@/lib/aft/workout-service";
 import {
   BlockBar,
   CheckpointList,
@@ -58,6 +59,10 @@ export default async function PlanPage() {
   // Goal bodyweight isn't directly captured; surface starting bodyweight as the
   // "current" for the form prefill so the first log is one tap.
   const startingWeight = plan.input.bodyweightLb;
+  const workoutLogs = await loadWorkoutsForPlan({
+    userId: session.user.id,
+    planId: planRow.id,
+  });
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -98,7 +103,7 @@ export default async function PlanPage() {
           entries={weightEntries}
           currentWeightLb={startingWeight}
         />
-        <WeeklyCalendar plan={plan} />
+        <WeeklyCalendar plan={plan} workouts={workoutLogs} />
       </div>
 
       <ChatPanel messages={chatMessages} groqEnabled={groqEnabled} />

@@ -223,7 +223,12 @@ export const planChatMessages = pgTable(
   }),
 );
 
-/** One row per scheduled workout in the plan; mark complete as you go. */
+/**
+ * One row per logged workout. Rows are written lazily — the row only exists
+ * when the user marks the day done or records actuals. Source of truth for
+ * the prescription is still plans.payload; this table snapshots what they
+ * actually did.
+ */
 export const workouts = pgTable(
   "workouts",
   {
@@ -236,8 +241,21 @@ export const workouts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     weekIndex: integer("week_index").notNull(), // 0-based
     dayOfWeek: integer("day_of_week").notNull(), // 0=Mon..6=Sun
-    sessionType: text("session_type").notNull(), // "strength_a" | "intervals" | "tempo" | etc.
+    sessionType: text("session_type").notNull(),
+    /** Snapshot of plan.payload's prescription at time of completion. */
     prescription: jsonb("prescription").notNull(),
+    /** What the user actually did per exercise; null = not yet logged. */
+    actuals: jsonb("actuals").$type<{
+      exercises?: Array<{
+        name: string;
+        actualWeightLb?: number;
+        actualReps?: string;
+        skipped?: boolean;
+        notes?: string;
+      }>;
+    }>(),
+    /** RPE 1-10; null = not recorded. */
+    rpe: integer("rpe"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     completedNotes: text("completed_notes"),
   },
