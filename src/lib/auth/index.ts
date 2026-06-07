@@ -1,4 +1,5 @@
 export { auth, handlers, signIn, signOut } from "./config";
+export { getAuthAndUser, requireAdmin, isOwnerEmail } from "./admin";
 
 import { auth } from "./config";
 

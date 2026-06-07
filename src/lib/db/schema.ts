@@ -25,6 +25,16 @@ export const users = pgTable("users", {
   passwordHash: text("password_hash"),
   /** Bcrypt hash of a 4–6 digit PIN for quick re-auth on a known device. Null = no PIN. */
   pinHash: text("pin_hash"),
+  /** "admin" sees the /admin panel; "user" is the default. */
+  role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
+  /** If true, every auth check rejects + signs the user out. Set by admin. */
+  disabled: boolean("disabled").notNull().default(false),
+  /** Bumped on each successful session check — drives the admin "last seen" column. */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  /** Cumulative Groq calls / tokens — fast aggregate, granular log in groq_calls. */
+  groqCallCount: integer("groq_call_count").notNull().default(0),
+  groqInputTokens: integer("groq_input_tokens").notNull().default(0),
+  groqOutputTokens: integer("groq_output_tokens").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 
@@ -34,6 +44,27 @@ export const users = pgTable("users", {
   mfaVerifiedAt: timestamp("mfa_verified_at", { withTimezone: true }),
   mfaBackupCodes: jsonb("mfa_backup_codes"),
 });
+
+/** One row per Groq API call — drives the admin usage time-series. */
+export const groqCalls = pgTable(
+  "groq_calls",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    model: text("model").notNull(),
+    purpose: text("purpose").notNull(), // "narrative" | "chat"
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    okFlag: boolean("ok").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index("groq_calls_user_idx").on(t.userId, t.createdAt),
+    createdIdx: index("groq_calls_created_idx").on(t.createdAt),
+  }),
+);
 
 export const accounts = pgTable(
   "accounts",

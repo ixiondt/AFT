@@ -43,6 +43,13 @@
       "when": 1780830781179,
       "tag": "0005_stale_absorbing_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780831100629,
+      "tag": "0006_icy_microchip",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import type { Plan, SessionType } from "@/lib/planner";
 import { secToMmss } from "@/lib/scoring";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { recordGroqCall } from "./usage";
 import { getGroqClient } from "./client";
 
 /* ----------------------------- edit schema ----------------------------- */
@@ -121,6 +122,7 @@ export async function generateChatResponse(args: {
   plan: Plan;
   userMessage: string;
   history: ReadonlyArray<{ role: "user" | "assistant"; content: string }>;
+  userId?: string;
 }): Promise<ChatResponse | null> {
   const client = getGroqClient();
   if (!client) return null;
@@ -150,6 +152,16 @@ export async function generateChatResponse(args: {
         },
       ],
     });
+
+    if (args.userId) {
+      void recordGroqCall({
+        userId: args.userId,
+        model: env.groqModel,
+        purpose: "chat",
+        inputTokens: completion.usage?.prompt_tokens,
+        outputTokens: completion.usage?.completion_tokens,
+      });
+    }
 
     const content = completion.choices[0]?.message.content;
     if (!content) {

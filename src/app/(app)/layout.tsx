@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getAuthAndUser } from "@/lib/auth";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import type { Plan, SessionType } from "@/lib/planner";
 import { AppNav } from "../app-nav";
@@ -30,11 +31,16 @@ function snapToMonday(date: Date): Date {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth();
-  let todayBadge: string | null = null;
+  const auth = await getAuthAndUser();
+  // Disabled accounts hard-redirect to sign-in with a clear flag.
+  if (auth?.disabled) redirect("/signin?error=disabled");
 
-  if (session?.user?.id) {
-    const planRow = await loadActivePlan(session.user.id);
+  let todayBadge: string | null = null;
+  let isAdmin = false;
+
+  if (auth) {
+    isAdmin = auth.user.role === "admin";
+    const planRow = await loadActivePlan(auth.user.id);
     if (planRow) {
       const plan = planRow.payload as Plan;
       const startMonday = snapToMonday(planRow.startDate);
@@ -52,7 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <>
-      <AppNav todayBadge={todayBadge} />
+      <AppNav todayBadge={todayBadge} isAdmin={isAdmin} />
       {children}
     </>
   );

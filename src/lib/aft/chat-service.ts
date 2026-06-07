@@ -125,6 +125,7 @@ export async function postChatMessage(args: {
     plan,
     userMessage: trimmed,
     history: historyForGroq,
+    userId,
   });
 
   if (!response) {

@@ -12,7 +12,13 @@ const TABS = [
   { href: "/body", label: "Body", icon: BodyIcon },
 ] as const;
 
-export function AppNav({ todayBadge }: { todayBadge?: string | null }) {
+export function AppNav({
+  todayBadge,
+  isAdmin,
+}: {
+  todayBadge?: string | null;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname() ?? "";
 
   return (
@@ -62,6 +68,20 @@ export function AppNav({ todayBadge }: { todayBadge?: string | null }) {
               >
                 <DotIcon />
                 Today · {todayBadge}
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={
+                  "hidden rounded-full px-3 py-1 text-xs font-medium transition-colors md:block " +
+                  (pathname.startsWith("/admin")
+                    ? "bg-[var(--color-ink)] text-[var(--color-bg)]"
+                    : "text-[var(--color-ink-3)] hover:bg-[var(--color-bg-2)]")
+                }
+                title="Admin panel"
+              >
+                Admin
               </Link>
             )}
             <ThemeToggle />

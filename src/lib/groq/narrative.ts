@@ -3,6 +3,7 @@ import { secToMmss } from "@/lib/scoring";
 import type { Plan } from "@/lib/planner";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
+import { recordGroqCall } from "./usage";
 import { getGroqClient } from "./client";
 
 /* ----------------------------- schema ----------------------------- */
@@ -101,7 +102,10 @@ function condensePlanForPrompt(plan: Plan): string {
  * Generate a coach-voice narrative for a plan. Returns null if Groq is unconfigured
  * or the call fails - callers should treat narrative as optional enrichment.
  */
-export async function generateNarrative(plan: Plan): Promise<Narrative | null> {
+export async function generateNarrative(
+  plan: Plan,
+  userId?: string,
+): Promise<Narrative | null> {
   const client = getGroqClient();
   if (!client) return null;
 
@@ -125,6 +129,16 @@ export async function generateNarrative(plan: Plan): Promise<Narrative | null> {
         { role: "user", content: `${userPayload}\n\n${schemaHint}` },
       ],
     });
+
+    if (userId) {
+      void recordGroqCall({
+        userId,
+        model: env.groqModel,
+        purpose: "narrative",
+        inputTokens: completion.usage?.prompt_tokens,
+        outputTokens: completion.usage?.completion_tokens,
+      });
+    }
 
     const content = completion.choices[0]?.message.content;
     if (!content) {
