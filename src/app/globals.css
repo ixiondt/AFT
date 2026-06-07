@@ -26,6 +26,52 @@
   --font-display: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
+/* ----- Dark theme overrides (manual class > system pref) ----- */
+:root.dark {
+  --color-ink: oklch(0.95 0.01 250);
+  --color-ink-2: oklch(0.78 0.008 250);
+  --color-ink-3: oklch(0.55 0.008 250);
+  --color-line: oklch(0.28 0.005 250);
+  --color-bg: oklch(0.16 0.01 250);
+  --color-bg-2: oklch(0.21 0.008 250);
+  --color-accent: oklch(0.65 0.15 145);
+  --color-accent-fg: oklch(0.12 0.01 250);
+  --color-accent-soft: oklch(0.28 0.05 145);
+  --color-danger: oklch(0.7 0.2 25);
+  --color-warn: oklch(0.78 0.15 75);
+  --color-mdl: oklch(0.65 0.15 30);
+  --color-hrp: oklch(0.7 0.15 250);
+  --color-sdc: oklch(0.68 0.14 280);
+  --color-plk: oklch(0.64 0.12 200);
+  --color-2mr: oklch(0.65 0.15 145);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --color-ink: oklch(0.95 0.01 250);
+    --color-ink-2: oklch(0.78 0.008 250);
+    --color-ink-3: oklch(0.55 0.008 250);
+    --color-line: oklch(0.28 0.005 250);
+    --color-bg: oklch(0.16 0.01 250);
+    --color-bg-2: oklch(0.21 0.008 250);
+    --color-accent: oklch(0.65 0.15 145);
+    --color-accent-fg: oklch(0.12 0.01 250);
+    --color-accent-soft: oklch(0.28 0.05 145);
+    --color-danger: oklch(0.7 0.2 25);
+    --color-warn: oklch(0.78 0.15 75);
+    --color-mdl: oklch(0.65 0.15 30);
+    --color-hrp: oklch(0.7 0.15 250);
+    --color-sdc: oklch(0.68 0.14 280);
+    --color-plk: oklch(0.64 0.12 200);
+    --color-2mr: oklch(0.65 0.15 145);
+  }
+}
+/* Map common Tailwind .bg-white to a theme-aware surface so dark mode
+   doesnt leave white cards everywhere. */
+:root.dark .bg-white { background-color: var(--color-bg-2) !important; }
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) .bg-white { background-color: var(--color-bg-2) !important; }
+}
+
 html, body {
   background: var(--color-bg);
   color: var(--color-ink);
