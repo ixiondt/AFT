@@ -20,7 +20,18 @@ try {
   await migrate(db, { migrationsFolder: "./drizzle" });
   console.log("[migrate] done");
 } catch (err) {
-  console.error("[migrate] failed:", err instanceof Error ? err.message : err);
+  console.error("[migrate] failed");
+  if (err && typeof err === "object") {
+    const e = err;
+    console.error("  message:", e.message);
+    for (const key of ["code", "severity", "detail", "hint", "where", "schema", "table", "constraint"]) {
+      if (e[key]) console.error(`  ${key}:`, e[key]);
+    }
+    if (e.cause) console.error("  cause:", e.cause);
+    if (e.stack) console.error("  stack:", e.stack.split("\n").slice(0, 5).join("\n"));
+  } else {
+    console.error(err);
+  }
   process.exitCode = 2;
 } finally {
   await client.end({ timeout: 5 });
