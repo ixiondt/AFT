@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import type { ExerciseRow, SessionPrescription } from "@/lib/planner";
@@ -30,10 +31,11 @@ export type WorkoutLog = {
   notes: string | null;
 };
 
-export async function loadWorkoutsForPlan(args: {
+/** Per-request memo for the workouts map. /plan + /calendar both pull this. */
+export const loadWorkoutsForPlan = cache(async (args: {
   userId: string;
   planId: string;
-}): Promise<Map<string, WorkoutLog>> {
+}): Promise<Map<string, WorkoutLog>> => {
   const rows = await db.query.workouts.findMany({
     where: and(
       eq(schema.workouts.userId, args.userId),
@@ -55,7 +57,7 @@ export async function loadWorkoutsForPlan(args: {
     });
   }
   return map;
-}
+});
 
 /** Upsert a workout row keyed by (planId, weekIndex, dayOfWeek). */
 export async function upsertWorkout(args: {

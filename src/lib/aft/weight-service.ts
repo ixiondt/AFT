@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 
@@ -14,11 +15,15 @@ export type WeightLogEntry = {
   } | null;
 };
 
-export async function loadWeightLog(args: {
+/**
+ * Per-request memo: /plan + /progress + /body each call this. With cache()
+ * the second + third callers in the same request hit the memo, not the DB.
+ */
+export const loadWeightLog = cache(async (args: {
   userId: string;
   planId?: string;
   limit?: number;
-}): Promise<WeightLogEntry[]> {
+}): Promise<WeightLogEntry[]> => {
   const { userId, planId, limit = 60 } = args;
   const rows = await db.query.weightLogs.findMany({
     where: planId
@@ -34,7 +39,7 @@ export async function loadWeightLog(args: {
     notes: r.notes,
     measurements: r.measurements ?? null,
   }));
-}
+});
 
 export async function logWeight(args: {
   userId: string;

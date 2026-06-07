@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "./config";
@@ -8,8 +9,11 @@ const OWNER_EMAIL = "julio.soriano30@gmail.com";
 /**
  * Returns the authed session + DB-fresh role/disabled. Auto-promotes the owner
  * email to admin the first time we see them — convenient for solo-owner deploys.
+ *
+ * Wrapped in React's `cache()` so layout + page + components in the same
+ * request share one auth round-trip. Per-request scope only.
  */
-export async function getAuthAndUser() {
+export const getAuthAndUser = cache(async () => {
   const session = await auth();
   if (!session?.user?.id) return null;
   const user = await db.query.users.findFirst({
@@ -35,7 +39,7 @@ export async function getAuthAndUser() {
     .catch(() => {});
 
   return { session, user, disabled: false as const };
-}
+});
 
 /** Require an admin role; redirect non-admins to /dashboard. */
 export async function requireAdmin() {

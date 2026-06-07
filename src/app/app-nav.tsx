@@ -13,11 +13,16 @@ const TABS = [
 ] as const;
 
 export function AppNav({
-  todayBadge,
   isAdmin,
+  children,
 }: {
-  todayBadge?: string | null;
   isAdmin?: boolean;
+  /**
+   * Right-rail slot for streamed content (e.g. the "Today" badge). The slot
+   * renders immediately as null and fills in once the server component
+   * resolves — keeps the nav from blocking on the plan query.
+   */
+  children?: React.ReactNode;
 }) {
   const pathname = usePathname() ?? "";
 
@@ -60,16 +65,7 @@ export function AppNav({
           </div>
 
           <div className="flex items-center gap-2">
-            {todayBadge && (
-              <Link
-                href="/plan"
-                className="hidden items-center gap-1.5 rounded-full bg-[var(--color-accent-soft)] px-3 py-1 text-xs font-medium text-[var(--color-accent)] hover:opacity-90 md:flex"
-                title="Today's scheduled session"
-              >
-                <DotIcon />
-                Today · {todayBadge}
-              </Link>
-            )}
+            {children}
             {isAdmin && (
               <Link
                 href="/admin"
