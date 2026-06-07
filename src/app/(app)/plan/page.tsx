@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import type { Plan } from "@/lib/planner";
+import { env } from "@/lib/env";
+import { loadChatHistory } from "@/lib/aft/chat-service";
 import {
   BlockBar,
   CheckpointList,
@@ -13,6 +15,7 @@ import {
   PlanSummary,
   WeeklyCalendar,
 } from "./components";
+import { ChatPanel, type ChatMessageView } from "./chat-panel";
 import { PrintButton } from "./print-button";
 
 export default async function PlanPage() {
@@ -38,6 +41,14 @@ export default async function PlanPage() {
   }
 
   const plan = planRow.payload as Plan;
+  const chatHistory = await loadChatHistory(planRow.id);
+  const chatMessages: ChatMessageView[] = chatHistory.map((m) => ({
+    id: m.id,
+    role: m.role as "user" | "assistant",
+    content: m.content,
+    createdAt: m.createdAt.toISOString(),
+  }));
+  const groqEnabled = Boolean(env.groqApiKey);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -75,6 +86,7 @@ export default async function PlanPage() {
         <MdlLadderTable plan={plan} />
         <CheckpointList plan={plan} />
         <WeeklyCalendar plan={plan} />
+        <ChatPanel messages={chatMessages} groqEnabled={groqEnabled} />
       </div>
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
