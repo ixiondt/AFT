@@ -15,6 +15,13 @@
       "when": 1780792708926,
       "tag": "0001_lying_sally_floyd",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780793306397,
+      "tag": "0002_mixed_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

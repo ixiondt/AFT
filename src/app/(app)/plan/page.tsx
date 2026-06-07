@@ -5,6 +5,7 @@ import { loadActivePlan } from "@/lib/aft/plan-service";
 import type { Plan } from "@/lib/planner";
 import { env } from "@/lib/env";
 import { loadChatHistory } from "@/lib/aft/chat-service";
+import { loadWeightLog } from "@/lib/aft/weight-service";
 import {
   BlockBar,
   CheckpointList,
@@ -17,6 +18,7 @@ import {
 } from "./components";
 import { ChatPanel, type ChatMessageView } from "./chat-panel";
 import { PrintButton } from "./print-button";
+import { WeightTracker } from "./weight-tracker";
 
 export default async function PlanPage() {
   const session = await auth();
@@ -49,6 +51,13 @@ export default async function PlanPage() {
     createdAt: m.createdAt.toISOString(),
   }));
   const groqEnabled = Boolean(env.groqApiKey);
+  const weightEntries = await loadWeightLog({
+    userId: session.user.id,
+    planId: planRow.id,
+  });
+  // Goal bodyweight isn't directly captured; surface starting bodyweight as the
+  // "current" for the form prefill so the first log is one tap.
+  const startingWeight = plan.input.bodyweightLb;
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -85,6 +94,10 @@ export default async function PlanPage() {
         <PaceCard plan={plan} />
         <MdlLadderTable plan={plan} />
         <CheckpointList plan={plan} />
+        <WeightTracker
+          entries={weightEntries}
+          currentWeightLb={startingWeight}
+        />
         <WeeklyCalendar plan={plan} />
         <ChatPanel messages={chatMessages} groqEnabled={groqEnabled} />
       </div>
