@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { forwardRef, useEffect, useRef, useState } from "react";
+import { SubmitButton } from "@/app/submit-button";
 import { signInWithPasswordAction, signInWithPinAction } from "./actions";
 
 const LAST_USER_KEY = "aft-last-user";
@@ -95,12 +96,12 @@ export function SignInClient({ initialError }: { initialError?: string }) {
               Invalid email or password.
             </p>
           )}
-          <button
-            type="submit"
+          <SubmitButton
             className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-[var(--color-accent-fg)] hover:opacity-90"
+            pendingLabel="Signing in…"
           >
             Sign in
-          </button>
+          </SubmitButton>
           {hasPin && !checking && (
             <button
               type="button"
@@ -136,12 +137,12 @@ export function SignInClient({ initialError }: { initialError?: string }) {
               Invalid PIN. After 5 wrong attempts you'll need to use your password.
             </p>
           )}
-          <button
-            type="submit"
+          <SubmitButton
             className="w-full rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-[var(--color-accent-fg)] hover:opacity-90"
+            pendingLabel="Unlocking…"
           >
             Sign in with PIN
-          </button>
+          </SubmitButton>
           <button
             type="button"
             onClick={() => setMode("password")}

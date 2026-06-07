@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { AppNav } from "./app-nav";
 import { ServiceWorkerRegister } from "./sw-register";
 
 export const metadata: Metadata = {
@@ -7,6 +8,10 @@ export const metadata: Metadata = {
   description: "Personalized US Army Fitness Test training plans with offline calendar access.",
   manifest: "/manifest.webmanifest",
   applicationName: "AFT Planner",
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: "/icon.svg",
+  },
   appleWebApp: {
     capable: true,
     title: "AFT",
@@ -22,10 +27,22 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Pre-paint theme application to avoid FOUC. Runs before React hydrates.
+const THEME_INIT_SCRIPT = `
+(function(){try{
+  var s=localStorage.getItem("aft-theme");
+  if(s==="dark"||s==="light"){document.documentElement.classList.add(s);}
+}catch(e){}})();
+`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-screen">
+        <AppNav />
         {children}
         <ServiceWorkerRegister />
       </body>
