@@ -74,6 +74,12 @@ export default async function PlanPage() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Your AFT program</h1>
         </div>
         <div className="flex items-center gap-3 print:hidden">
+          <Link
+            href="/progress"
+            className="rounded-lg border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            Progress
+          </Link>
           <a
             href="/api/plan/ics"
             download="aft-plan.ics"
