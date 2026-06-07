@@ -65,7 +65,8 @@ export async function loadProgressSnapshot(args: {
   const { userId, planId, plan } = args;
 
   const [weightLog, workoutRows] = await Promise.all([
-    loadWeightLog({ userId, planId }),
+    // Weight log is per-user (lifelong), workouts are per-plan.
+    loadWeightLog({ userId }),
     db.query.workouts.findMany({
       where: and(
         eq(schema.workouts.userId, userId),
