@@ -99,8 +99,9 @@ export default async function PlanPage() {
           currentWeightLb={startingWeight}
         />
         <WeeklyCalendar plan={plan} />
-        <ChatPanel messages={chatMessages} groqEnabled={groqEnabled} />
       </div>
+
+      <ChatPanel messages={chatMessages} groqEnabled={groqEnabled} />
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
         Plan generated {new Date(plan.generatedAt).toLocaleString()} · scoring per official
