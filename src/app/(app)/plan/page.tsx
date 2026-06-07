@@ -52,9 +52,10 @@ export default async function PlanPage() {
     createdAt: m.createdAt.toISOString(),
   }));
   const groqEnabled = Boolean(env.groqApiKey);
+  // Weight log is per-user, not per-plan. Regenerating a plan should NOT
+  // hide history — keep showing every weigh-in this person has ever logged.
   const weightEntries = await loadWeightLog({
     userId: session.user.id,
-    planId: planRow.id,
   });
   // Goal bodyweight isn't directly captured; surface starting bodyweight as the
   // "current" for the form prefill so the first log is one tap.
