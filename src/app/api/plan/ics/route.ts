@@ -29,11 +29,15 @@ export async function GET(): Promise<Response> {
     startDate: planRow.startDate,
   });
   const filename = `aft-plan-${plan.input.durationWeeks}wk.ics`;
+  // RFC 5987 filename* gets the unicode-safe form; plain filename= is the
+  // fallback for older clients. Both pinning .ics prevents the browser from
+  // appending .txt based on Content-Type sniffing.
   return new Response(ics, {
     headers: {
-      "content-type": "text/calendar; charset=utf-8",
-      "content-disposition": `attachment; filename="${filename}"`,
-      "cache-control": "no-store",
+      "Content-Type": "text/calendar; charset=utf-8; method=PUBLISH",
+      "Content-Disposition": `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "no-store",
     },
   });
 }

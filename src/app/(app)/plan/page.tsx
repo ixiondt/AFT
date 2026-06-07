@@ -62,7 +62,7 @@ export default async function PlanPage() {
         <div className="flex items-center gap-3 print:hidden">
           <a
             href="/api/plan/ics"
-            download
+            download="aft-plan.ics"
             className="rounded-lg border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
           >
             Download .ics
