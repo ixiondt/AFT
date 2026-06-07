@@ -133,6 +133,25 @@ export function pointGapByEvent(
 export const SCORING_DATA: ScoringData = DATA;
 
 /**
+ * Min/max raw bounds for a given event, bracket, sex — used to drive
+ * input sliders. Returns null if the bracket/sex combo has no entries.
+ */
+export function getRawBounds(
+  event: Event,
+  bracket: Bracket,
+  sex: Sex,
+): { min: number; max: number; passing: number | null } | null {
+  const table = DATA.events[event].tables[bracket][sex];
+  if (!table.length) return null;
+  const thresholds = table.map((r) => r[1]);
+  const min = Math.min(...thresholds);
+  const max = Math.max(...thresholds);
+  // Passing threshold is the raw value that scores exactly 60 pts (if present).
+  const pass = table.find((r) => r[0] === 60);
+  return { min, max, passing: pass ? pass[1] : null };
+}
+
+/**
  * Reverse lookup: given a target points value, return the raw threshold that
  * achieves *at least* those points. Useful when a user wants to enter "100 pts"
  * for MDL and we need to convert that into the actual lb requirement.

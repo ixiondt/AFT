@@ -1,18 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: oklch(0.18 0.005 250);
-  --color-ink-2: oklch(0.32 0.005 250);
-  --color-ink-3: oklch(0.55 0.005 250);
-  --color-line: oklch(0.92 0.005 250);
+  --color-ink: oklch(0.16 0.01 250);
+  --color-ink-2: oklch(0.34 0.008 250);
+  --color-ink-3: oklch(0.56 0.005 250);
+  --color-line: oklch(0.91 0.005 250);
   --color-bg: oklch(0.99 0.002 250);
-  --color-bg-2: oklch(0.96 0.003 250);
-  --color-accent: oklch(0.42 0.12 145); /* military green */
+  --color-bg-2: oklch(0.96 0.004 250);
+  --color-accent: oklch(0.45 0.14 145); /* military green */
   --color-accent-fg: oklch(0.99 0.002 250);
-  --color-danger: oklch(0.55 0.18 25);
+  --color-accent-soft: oklch(0.93 0.06 145);
+  --color-danger: oklch(0.55 0.2 25);
+  --color-warn: oklch(0.72 0.15 75);
+  --color-info: oklch(0.6 0.12 230);
+
+  /* Event-specific accents — used as tiny badges + hairlines for visual hierarchy. */
+  --color-mdl: oklch(0.5 0.13 30);   /* deadlift red-orange */
+  --color-hrp: oklch(0.55 0.13 250); /* push-up cool blue */
+  --color-sdc: oklch(0.55 0.12 280); /* SDC purple */
+  --color-plk: oklch(0.5 0.1 200);   /* plank teal */
+  --color-2mr: oklch(0.45 0.14 145); /* run green */
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 html, body {
@@ -23,6 +34,62 @@ html, body {
 }
 
 * { border-color: var(--color-line); }
+
+/* ----- typography ----- */
+h1, h2, h3 { letter-spacing: -0.015em; }
+h1 { font-weight: 700; }
+
+/* ----- range slider styling — applied via class aft-slider ----- */
+.aft-slider {
+  --track-h: 6px;
+  --thumb: 18px;
+  background-image: linear-gradient(
+    to right,
+    var(--color-accent) 0%,
+    var(--color-accent) calc(var(--pct, 50%) * 1),
+    var(--color-line) calc(var(--pct, 50%) * 1),
+    var(--color-line) 100%
+  );
+  background-size: 100% var(--track-h);
+  background-repeat: no-repeat;
+  background-position: 0 50%;
+}
+.aft-slider::-webkit-slider-runnable-track {
+  height: var(--track-h);
+  border-radius: 999px;
+  background: var(--color-line);
+}
+.aft-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 999px;
+  background: var(--color-accent);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  margin-top: calc((var(--track-h) - var(--thumb)) / 2);
+  cursor: grab;
+}
+.aft-slider::-webkit-slider-thumb:active { cursor: grabbing; }
+.aft-slider::-moz-range-track {
+  height: var(--track-h);
+  border-radius: 999px;
+  background: var(--color-line);
+}
+.aft-slider::-moz-range-progress {
+  height: var(--track-h);
+  border-radius: 999px;
+  background: var(--color-accent);
+}
+.aft-slider::-moz-range-thumb {
+  width: var(--thumb);
+  height: var(--thumb);
+  border-radius: 999px;
+  background: var(--color-accent);
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  cursor: grab;
+}
 
 @media print {
   @page {

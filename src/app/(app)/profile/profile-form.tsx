@@ -3,12 +3,21 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import {
   ageToBracket,
+  getRawBounds,
   mmssToSec,
   rawFromPoints,
   scoreEvent,
   secToMmss,
 } from "@/lib/scoring";
 import type { Event as AftEvent, Sex } from "@/lib/scoring/types";
+
+const EVENT_STEP: Record<AftEvent, number> = {
+  MDL: 5,
+  HRP: 1,
+  SDC: 1,
+  PLK: 1,
+  "2MR": 1,
+};
 
 /* ---------------------------- event helpers ---------------------------- */
 
@@ -574,6 +583,19 @@ function ScoreField(props: {
           </span>
         </div>
       </div>
+
+      {canScore && (
+        <ScoreSlider
+          event={event}
+          ageNum={ageNum}
+          sex={sex as Sex}
+          rawValue={liveRawValue}
+          onChange={(raw) => {
+            setPtsInput("");
+            onChange(formatRaw(event, raw));
+          }}
+        />
+      )}
       {onMaintain && (
         <button
           type="button"
@@ -586,6 +608,87 @@ function ScoreField(props: {
           Maintain current
         </button>
       )}
+    </div>
+  );
+}
+
+function ScoreSlider({
+  event,
+  ageNum,
+  sex,
+  rawValue,
+  onChange,
+}: {
+  event: AftEvent;
+  ageNum: number;
+  sex: Sex;
+  rawValue: number | null;
+  onChange: (raw: number) => void;
+}) {
+  const bracket = ageToBracket(ageNum);
+  const bounds = getRawBounds(event, bracket, sex);
+  if (!bounds) return null;
+
+  const step = EVENT_STEP[event];
+  const displayValue = rawValue ?? bounds.min;
+  // Position 0..1 along the slider track
+  const range = Math.max(1, bounds.max - bounds.min);
+  const pos = Math.max(0, Math.min(1, (displayValue - bounds.min) / range));
+
+  // For lower-is-better events (SDC, 2MR) the table's min raw = max points,
+  // so the slider value direction is still ascending raw (left to right) but
+  // the LEFT side represents BETTER performance. We label that explicitly.
+  const lowerIsBetter = event === "SDC" || event === "2MR";
+
+  const passingPos =
+    bounds.passing !== null
+      ? Math.max(0, Math.min(1, (bounds.passing - bounds.min) / range))
+      : null;
+
+  const fmt = (raw: number): string =>
+    TIME_EVENTS.has(event) ? secToMmss(raw) : `${Math.round(raw)}`;
+
+  return (
+    <div className="mt-2">
+      <div className="relative h-6">
+        <input
+          type="range"
+          min={bounds.min}
+          max={bounds.max}
+          step={step}
+          value={displayValue}
+          onChange={(e) => onChange(Number(e.target.value))}
+          aria-label={`${event} slider`}
+          className="aft-slider relative z-10 block h-6 w-full cursor-pointer appearance-none bg-transparent"
+        />
+        {passingPos !== null && (
+          <div
+            className="pointer-events-none absolute top-1/2 h-2 w-px -translate-y-1/2 bg-[var(--color-danger)] opacity-60"
+            style={{ left: `${passingPos * 100}%` }}
+            title="60-point pass line"
+          />
+        )}
+      </div>
+      <div className="mt-0.5 flex justify-between text-[10px] text-[var(--color-ink-3)]">
+        <span className="font-mono">
+          {fmt(bounds.min)}
+          <span className="ml-1 opacity-60">
+            {lowerIsBetter ? "fast" : "min"}
+          </span>
+        </span>
+        {bounds.passing !== null && (
+          <span className="font-mono">
+            <span className="opacity-60">pass </span>
+            {fmt(bounds.passing)}
+          </span>
+        )}
+        <span className="font-mono">
+          {fmt(bounds.max)}
+          <span className="ml-1 opacity-60">
+            {lowerIsBetter ? "slow" : "max"}
+          </span>
+        </span>
+      </div>
     </div>
   );
 }

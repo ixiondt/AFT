@@ -7,27 +7,72 @@ import { logWorkoutDetailsAction, markWorkoutAction } from "./workout-actions";
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function PlanSummary({ plan }: { plan: Plan }) {
+  const gain = Math.max(0, plan.goalTotal - plan.currentTotal);
+  const passing = plan.goalTotal >= 300;
   return (
-    <section className="rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-6 print-keep">
-      <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
-        Summary
-      </h2>
-      <div className="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2 text-[var(--color-ink)]">
+    <section className="rounded-xl border border-[var(--color-line)] bg-[var(--color-bg-2)] p-6 shadow-sm print-keep">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-xs font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
+          Plan summary
+        </h2>
+        <span className="text-xs text-[var(--color-ink-3)]">
+          Bracket <span className="font-mono text-[var(--color-ink-2)]">{plan.bracket}</span> · {plan.input.durationWeeks} wk · {plan.input.daysPerWeek}/wk
+        </span>
+      </div>
+      <div className="mt-4 flex flex-wrap items-end gap-x-6 gap-y-3">
         <div>
-          <div className="text-xs text-[var(--color-ink-3)]">Current total</div>
-          <div className="text-2xl font-semibold">{plan.currentTotal}</div>
+          <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            Current
+          </div>
+          <div className="font-mono text-4xl font-bold leading-none text-[var(--color-ink)]">
+            {plan.currentTotal}
+            <span className="ml-1 text-base font-normal text-[var(--color-ink-3)]">pts</span>
+          </div>
         </div>
-        <div className="text-2xl text-[var(--color-ink-3)]">→</div>
+        <div className="pb-1 font-mono text-xl text-[var(--color-ink-3)]">→</div>
         <div>
-          <div className="text-xs text-[var(--color-ink-3)]">Goal total</div>
-          <div className="text-2xl font-semibold">{plan.goalTotal}</div>
+          <div className="text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            Goal
+          </div>
+          <div
+            className="font-mono text-4xl font-bold leading-none"
+            style={{ color: passing ? "var(--color-accent)" : "var(--color-warn)" }}
+          >
+            {plan.goalTotal}
+            <span className="ml-1 text-base font-normal text-[var(--color-ink-3)]">pts</span>
+          </div>
         </div>
-        <div className="ml-auto text-sm text-[var(--color-ink-2)]">
-          Bracket <span className="font-mono">{plan.bracket}</span> · {plan.input.durationWeeks} weeks ·{" "}
-          {plan.input.daysPerWeek} days/wk
-        </div>
+        {gain > 0 && (
+          <div className="rounded-full bg-[var(--color-accent-soft)] px-3 py-1 font-mono text-xs font-semibold text-[var(--color-accent)]">
+            +{gain} pts to gain
+          </div>
+        )}
       </div>
     </section>
+  );
+}
+
+const EVENT_HUE: Record<string, string> = {
+  MDL: "var(--color-mdl)",
+  HRP: "var(--color-hrp)",
+  SDC: "var(--color-sdc)",
+  PLK: "var(--color-plk)",
+  "2MR": "var(--color-2mr)",
+};
+
+function EventTag({ event }: { event: string }) {
+  const c = EVENT_HUE[event] ?? "var(--color-ink-2)";
+  return (
+    <span
+      className="inline-flex h-5 items-center rounded px-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-white"
+      style={{
+        background: c,
+        printColorAdjust: "exact",
+        WebkitPrintColorAdjust: "exact",
+      }}
+    >
+      {event}
+    </span>
   );
 }
 
@@ -49,14 +94,18 @@ export function GapTable({ plan }: { plan: Plan }) {
         <tbody>
           {plan.gaps.map((g) => (
             <tr key={g.event} className="border-b border-[var(--color-line)]">
-              <td className="py-2 font-mono">{g.event}</td>
-              <td className="py-2">{g.currentPoints} pts</td>
-              <td className="py-2">{g.goalPoints} pts</td>
+              <td className="py-2">
+                <EventTag event={g.event} />
+              </td>
+              <td className="py-2 font-mono">{g.currentPoints} pts</td>
+              <td className="py-2 font-mono">{g.goalPoints} pts</td>
               <td className="py-2">
                 {g.gap > 0 ? (
-                  <span className="font-medium text-[var(--color-accent)]">+{g.gap}</span>
+                  <span className="font-mono font-semibold text-[var(--color-accent)]">+{g.gap}</span>
                 ) : (
-                  <span className="text-[var(--color-ink-3)]">maintain</span>
+                  <span className="text-xs uppercase tracking-wider text-[var(--color-ink-3)]">
+                    maintain
+                  </span>
                 )}
               </td>
             </tr>
