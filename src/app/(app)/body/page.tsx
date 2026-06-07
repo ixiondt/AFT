@@ -63,6 +63,10 @@ export default async function BodyPage() {
         />
       )}
 
+      {profile?.heightIn && latest && (
+        <ExportSection sex={profile.sex} />
+      )}
+
       <History log={log} profile={profile ?? null} />
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
@@ -423,6 +427,76 @@ function Field({
         </span>
       )}
     </label>
+  );
+}
+
+function ExportSection({ sex }: { sex: "MC" | "F" }) {
+  const formName = sex === "MC" ? "DA 5500" : "DA 5501";
+  return (
+    <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+            Export Army Body Fat Worksheet ({formName})
+          </h2>
+          <p className="mt-1 text-xs text-[var(--color-ink-3)]">
+            Generates the official {formName} pre-filled with your most recent
+            log + the current Army single-site calculation. Sign + submit per
+            your unit's process.
+          </p>
+        </div>
+      </div>
+      <form
+        action="/api/body/da-form"
+        method="GET"
+        className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+      >
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            Rank (optional)
+          </span>
+          <input
+            type="text"
+            name="rank"
+            maxLength={10}
+            placeholder="SGT"
+            className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            Prepared by (optional)
+          </span>
+          <input
+            type="text"
+            name="prepared_by"
+            maxLength={60}
+            placeholder="LAST, FIRST"
+            className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+            Preparer rank
+          </span>
+          <input
+            type="text"
+            name="prepared_by_rank"
+            maxLength={10}
+            placeholder="SFC"
+            className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
+          />
+        </label>
+        <div className="flex items-end">
+          <button
+            type="submit"
+            className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)] hover:opacity-90"
+          >
+            Download {formName}
+          </button>
+        </div>
+      </form>
+    </section>
   );
 }
 

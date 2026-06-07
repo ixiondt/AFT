@@ -6,6 +6,83 @@ import { logWorkoutDetailsAction, markWorkoutAction } from "./workout-actions";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+const EVENT_HUE: Record<string, string> = {
+  MDL: "var(--color-mdl)",
+  HRP: "var(--color-hrp)",
+  SDC: "var(--color-sdc)",
+  PLK: "var(--color-plk)",
+  "2MR": "var(--color-2mr)",
+};
+
+export function RealismCard({ plan }: { plan: Plan }) {
+  const warnings = plan.realism ?? [];
+  if (!warnings.length) return null;
+  const worst = warnings.some((w) => w.severity === "danger")
+    ? "danger"
+    : warnings.some((w) => w.severity === "warn")
+      ? "warn"
+      : "info";
+  const accent =
+    worst === "danger"
+      ? "var(--color-danger)"
+      : worst === "warn"
+        ? "var(--color-warn)"
+        : "var(--color-info)";
+  return (
+    <section
+      className="rounded-xl border-2 p-4 print-keep"
+      style={{ borderColor: accent }}
+    >
+      <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: accent }}>
+        <span>⚠</span>
+        Realism check
+      </h2>
+      <ul className="mt-2 space-y-2 text-sm text-[var(--color-ink-2)]">
+        {warnings.map((w, i) => (
+          <li key={i}>
+            <div className="flex items-baseline gap-2">
+              <RealismDot severity={w.severity} />
+              {w.event && (
+                <span
+                  className="rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-white"
+                  style={{ background: EVENT_HUE[w.event] ?? "var(--color-ink-2)" }}
+                >
+                  {w.event}
+                </span>
+              )}
+              <span>{w.message}</span>
+            </div>
+            {w.suggestion && (
+              <div className="ml-6 mt-0.5 text-xs text-[var(--color-ink-3)]">
+                {w.suggestion}
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+        Plan was still generated — these are advisory, not blockers.
+      </p>
+    </section>
+  );
+}
+
+function RealismDot({ severity }: { severity: "info" | "warn" | "danger" }) {
+  const color =
+    severity === "danger"
+      ? "var(--color-danger)"
+      : severity === "warn"
+        ? "var(--color-warn)"
+        : "var(--color-info)";
+  return (
+    <span
+      className="inline-block h-2 w-2 shrink-0 rounded-full"
+      style={{ background: color }}
+      aria-hidden="true"
+    />
+  );
+}
+
 export function PlanSummary({ plan }: { plan: Plan }) {
   const gain = Math.max(0, plan.goalTotal - plan.currentTotal);
   const passing = plan.goalTotal >= 300;
@@ -51,14 +128,6 @@ export function PlanSummary({ plan }: { plan: Plan }) {
     </section>
   );
 }
-
-const EVENT_HUE: Record<string, string> = {
-  MDL: "var(--color-mdl)",
-  HRP: "var(--color-hrp)",
-  SDC: "var(--color-sdc)",
-  PLK: "var(--color-plk)",
-  "2MR": "var(--color-2mr)",
-};
 
 function EventTag({ event }: { event: string }) {
   const c = EVENT_HUE[event] ?? "var(--color-ink-2)";

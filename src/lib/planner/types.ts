@@ -174,6 +174,14 @@ export type PlanNarrative = {
   closingNote: string;
 };
 
+export type RealismWarningStored = {
+  severity: "info" | "warn" | "danger";
+  scope: "total" | "event";
+  event?: "MDL" | "HRP" | "SDC" | "PLK" | "2MR";
+  message: string;
+  suggestion?: string;
+};
+
 export type Plan = {
   input: PlanInput;
   bracket: string;
@@ -187,6 +195,8 @@ export type Plan = {
   hrpProgression: readonly HrpProgressionWeek[];
   weeks: readonly WeekPlan[];
   checkpoints: readonly Checkpoint[];
+  /** Non-blocking warnings about how aggressive the goals are vs the duration. */
+  realism: readonly RealismWarningStored[];
   generatedAt: string; // ISO timestamp injected by caller
   narrative?: PlanNarrative;
 };

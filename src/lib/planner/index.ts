@@ -6,6 +6,7 @@ import { makePlankProgression } from "./plank";
 import { makeHrpProgression } from "./hrp";
 import { buildWeekDays } from "./days";
 import { makeCheckpoints } from "./checkpoints";
+import { computeRealismWarnings } from "./realism";
 import type { Plan, PlanInput, WeekPlan } from "./types";
 
 export * from "./types";
@@ -57,6 +58,13 @@ export function generatePlan(input: PlanInput, now: Date = new Date(0)): Plan {
   }
 
   const checkpoints = makeCheckpoints(input);
+  const realism = computeRealismWarnings({
+    age: input.age,
+    sex: input.sex,
+    durationWeeks: input.durationWeeks,
+    current: input.current,
+    goal: input.goal,
+  });
 
   return {
     input,
@@ -71,6 +79,7 @@ export function generatePlan(input: PlanInput, now: Date = new Date(0)): Plan {
     hrpProgression,
     weeks,
     checkpoints,
+    realism,
     generatedAt: now.toISOString(),
   };
 }
