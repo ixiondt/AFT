@@ -9,7 +9,7 @@ import { CalendarNav } from "./calendar-nav";
 /* ---------------- date helpers ---------------- */
 
 const MS_PER_DAY = 86_400_000;
-const WEEKDAY_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 function pad2(n: number) {
   return n.toString().padStart(2, "0");
@@ -53,7 +53,9 @@ function addMonths(d: Date, months: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1));
 }
 function buildMonthGrid(monthStart: Date): Date[][] {
-  const firstDow = (monthStart.getUTCDay() + 6) % 7; // 0=Mon
+  // Sunday-first US layout. JS getUTCDay() returns 0=Sun..6=Sat, which is
+  // exactly what we want as the column offset.
+  const firstDow = monthStart.getUTCDay();
   const gridStart = new Date(monthStart);
   gridStart.setUTCDate(monthStart.getUTCDate() - firstDow);
 
