@@ -53,7 +53,7 @@ export async function persistGeneratedPlan(args: {
 
   // Best-effort narrative enrichment. If Groq is unconfigured or fails, we still
   // ship the deterministic plan.
-  const narrative = await generateNarrative(plan);
+  const narrative = await generateNarrative(plan, userId);
   if (narrative) {
     plan = { ...plan, narrative };
     logger.info({ userId }, "narrative attached to plan");
