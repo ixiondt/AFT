@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { AppNav } from "./app-nav";
+import { readFlash } from "@/lib/flash";
+import { FlashToast } from "./flash-toast";
 import { ServiceWorkerRegister } from "./sw-register";
 
 export const metadata: Metadata = {
@@ -35,16 +36,17 @@ const THEME_INIT_SCRIPT = `
 }catch(e){}})();
 `;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const flash = await readFlash();
   return (
     <html lang="en">
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen">
-        <AppNav />
         {children}
         <ServiceWorkerRegister />
+        {flash && <FlashToast type={flash.type} message={flash.message} />}
       </body>
     </html>
   );

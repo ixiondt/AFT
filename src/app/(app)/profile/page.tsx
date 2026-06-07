@@ -12,7 +12,9 @@ export default async function ProfilePage({
   const session = await auth();
   if (!session?.user?.id) redirect("/signin");
   const { error } = await searchParams;
-  const initialValues = await loadInitialFormValues(session.user.id);
+  const initialValuesRaw = await loadInitialFormValues(session.user.id);
+  // Pull goalBodyweightLb from prior plan's payload if present
+  const initialValues = initialValuesRaw;
   const hasPrior = initialValues.age !== undefined;
 
   return (

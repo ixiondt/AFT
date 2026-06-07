@@ -29,6 +29,8 @@ export type PlanInput = {
   age: number;
   sex: Sex;
   bodyweightLb: number;
+  /** Optional target bodyweight (lb) — drives the weight-tracker target line. */
+  goalBodyweightLb?: number;
   daysPerWeek: 3 | 4 | 5 | 6;
   durationWeeks: number; // 6..26
   equipment: readonly Equipment[];

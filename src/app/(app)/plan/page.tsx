@@ -115,6 +115,9 @@ export default async function PlanPage() {
         <WeightTracker
           entries={weightEntries}
           currentWeightLb={startingWeight}
+          {...(plan.input.goalBodyweightLb
+            ? { goalWeightLb: plan.input.goalBodyweightLb }
+            : {})}
         />
         <WeeklyCalendar plan={plan} workouts={workoutLogs} />
       </div>

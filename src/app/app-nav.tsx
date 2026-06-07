@@ -11,12 +11,8 @@ const TABS = [
   { href: "/progress", label: "Progress", icon: ProgressIcon },
 ] as const;
 
-const HIDE_ON: ReadonlySet<string> = new Set(["/", "/signin", "/signup"]);
-
-export function AppNav() {
+export function AppNav({ todayBadge }: { todayBadge?: string | null }) {
   const pathname = usePathname() ?? "";
-  const hide = HIDE_ON.has(pathname);
-  if (hide) return null;
 
   return (
     <>
@@ -57,6 +53,16 @@ export function AppNav() {
           </div>
 
           <div className="flex items-center gap-2">
+            {todayBadge && (
+              <Link
+                href="/plan"
+                className="hidden items-center gap-1.5 rounded-full bg-[var(--color-accent-soft)] px-3 py-1 text-xs font-medium text-[var(--color-accent)] hover:opacity-90 md:flex"
+                title="Today's scheduled session"
+              >
+                <DotIcon />
+                Today · {todayBadge}
+              </Link>
+            )}
             <ThemeToggle />
           </div>
         </nav>
@@ -142,6 +148,16 @@ function ThemeToggle() {
 }
 
 /* ---------------- icons ---------------- */
+
+function DotIcon() {
+  return (
+    <span
+      className="block h-1.5 w-1.5 animate-pulse rounded-full"
+      style={{ background: "var(--color-accent)" }}
+      aria-hidden="true"
+    />
+  );
+}
 
 function HomeIcon({ active }: { active: boolean }) {
   return (

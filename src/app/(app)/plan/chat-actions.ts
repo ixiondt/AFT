@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import { postChatMessage } from "@/lib/aft/chat-service";
+import { setFlash } from "@/lib/flash";
 
 export async function sendChatMessage(formData: FormData): Promise<void> {
   const session = await auth();
@@ -14,11 +15,14 @@ export async function sendChatMessage(formData: FormData): Promise<void> {
   if (!planRow) redirect("/profile");
 
   const message = String(formData.get("message") ?? "");
-  await postChatMessage({
+  const result = await postChatMessage({
     userId: session.user.id,
     planId: planRow.id,
     message,
   });
+  if (!result.ok) {
+    await setFlash(result.error, "error");
+  }
 
   revalidatePath("/plan");
 }

@@ -6,6 +6,7 @@ export type InitialFormValues = {
   age?: string;
   sex?: "MC" | "F" | "";
   bodyweightLb?: string;
+  goalBodyweightLb?: string;
   daysPerWeek?: string;
   durationWeeks?: number;
   testDate?: string; // YYYY-MM-DD
@@ -50,14 +51,22 @@ export async function loadInitialFormValues(userId: string): Promise<InitialForm
 
   if (latestPlan) {
     out.durationWeeks = latestPlan.durationWeeks;
-    // Preferences live in the plan payload; pull them back for prefill.
+    // Preferences + goal bodyweight live in the plan payload; pull them for prefill.
     const payload = latestPlan.payload as
-      | { input?: { preferences?: { calisthenicsPreferred?: boolean; activeRecovery?: boolean } } }
+      | {
+          input?: {
+            goalBodyweightLb?: number;
+            preferences?: { calisthenicsPreferred?: boolean; activeRecovery?: boolean };
+          };
+        }
       | null;
     const prefs = payload?.input?.preferences;
     if (prefs) {
       out.calisthenicsPreferred = Boolean(prefs.calisthenicsPreferred);
       out.activeRecovery = Boolean(prefs.activeRecovery);
+    }
+    if (typeof payload?.input?.goalBodyweightLb === "number") {
+      out.goalBodyweightLb = String(payload.input.goalBodyweightLb);
     }
   }
 

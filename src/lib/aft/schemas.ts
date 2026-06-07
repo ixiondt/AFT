@@ -42,6 +42,13 @@ export const PROFILE_FORM_SCHEMA = z.object({
   age: z.coerce.number().int().min(17).max(80),
   sex: z.enum(["MC", "F"]),
   bodyweightLb: z.coerce.number().int().min(80).max(500),
+  goalBodyweightLb: z.coerce
+    .number()
+    .int()
+    .min(80)
+    .max(500)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   daysPerWeek: z.coerce.number().int().refine((n) => [3, 4, 5, 6].includes(n), "Choose 3, 4, 5, or 6"),
   durationWeeks: z.coerce.number().int().min(6).max(26),
   testDate: z.string().min(1, "Pick a test date"),

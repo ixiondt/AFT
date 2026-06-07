@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import { deleteWeightEntry, logWeight } from "@/lib/aft/weight-service";
+import { setFlash } from "@/lib/flash";
 
 export async function logWeightAction(formData: FormData): Promise<void> {
   const session = await auth();
@@ -17,12 +18,17 @@ export async function logWeightAction(formData: FormData): Promise<void> {
   const weightLb = Number.parseInt(raw, 10);
   const notes = String(formData.get("notes") ?? "").trim();
 
-  await logWeight({
+  const result = await logWeight({
     userId: session.user.id,
     planId,
     weightLb,
     ...(notes ? { notes } : {}),
   });
+  if (result.ok) {
+    await setFlash(`Logged ${weightLb} lb`);
+  } else {
+    await setFlash(result.error, "error");
+  }
 
   revalidatePath("/plan");
 }

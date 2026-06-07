@@ -8,6 +8,7 @@ import {
   parseActualsFromForm,
   upsertWorkout,
 } from "@/lib/aft/workout-service";
+import { setFlash } from "@/lib/flash";
 import type { Plan, SessionPrescription } from "@/lib/planner";
 
 function sessionFor(plan: Plan, weekIndex: number, dayOfWeek: number): SessionPrescription | null {
@@ -31,15 +32,17 @@ export async function markWorkoutAction(formData: FormData): Promise<void> {
   const prescription = sessionFor(planRow.payload as Plan, weekIndex, dayOfWeek);
   if (!prescription) return;
 
+  const completed = action !== "unmark";
   await upsertWorkout({
     userId: session.user.id,
     planId: planRow.id,
     weekIndex,
     dayOfWeek,
     prescription,
-    completed: action !== "unmark",
+    completed,
   });
 
+  await setFlash(completed ? "Workout marked done" : "Completion cleared");
   revalidatePath("/plan");
 }
 
@@ -73,5 +76,6 @@ export async function logWorkoutDetailsAction(formData: FormData): Promise<void>
     ...(notes ? { notes } : {}),
   });
 
+  await setFlash("Workout details saved");
   revalidatePath("/plan");
 }
