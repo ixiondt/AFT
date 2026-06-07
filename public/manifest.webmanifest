@@ -1,0 +1,17 @@
+{
+  "name": "AFT Planner",
+  "short_name": "AFT",
+  "description": "Personalized US Army Fitness Test training plans with offline calendar access.",
+  "start_url": "/plan",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fdfdfd",
+  "theme_color": "#3f6d3f",
+  "lang": "en-US",
+  "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "maskable" }
+  ],
+  "categories": ["fitness", "health", "productivity"]
+}
