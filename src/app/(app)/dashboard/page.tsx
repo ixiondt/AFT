@@ -201,6 +201,11 @@ export default async function DashboardPage({
             primary
           />
           <ActionCard
+            href="/calendar"
+            title="Calendar"
+            sub="See every session on a real month view"
+          />
+          <ActionCard
             href="/progress"
             title="Progress dashboard"
             sub="Trends, adherence, MDL/HRP/Plank curves"
