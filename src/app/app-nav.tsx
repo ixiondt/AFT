@@ -9,6 +9,7 @@ const TABS = [
   { href: "/plan", label: "Plan", icon: PlanIcon },
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/progress", label: "Progress", icon: ProgressIcon },
+  { href: "/body", label: "Body", icon: BodyIcon },
 ] as const;
 
 export function AppNav({ todayBadge }: { todayBadge?: string | null }) {
@@ -73,7 +74,7 @@ export function AppNav({ todayBadge }: { todayBadge?: string | null }) {
         className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-line)] bg-[var(--color-bg)] pb-[max(env(safe-area-inset-bottom),0.25rem)] sm:hidden print:hidden"
         aria-label="App navigation"
       >
-        <ul className="grid grid-cols-4">
+        <ul className="grid grid-cols-5">
           {TABS.map((t) => {
             const Active = isActive(pathname, t.href);
             const Icon = t.icon;
@@ -156,6 +157,15 @@ function DotIcon() {
       style={{ background: "var(--color-accent)" }}
       aria-hidden="true"
     />
+  );
+}
+
+function BodyIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="5" r="2.5" fill={active ? "currentColor" : "none"} fillOpacity={active ? "0.12" : "0"} />
+      <path d="M8 22V14H6L8 8h8l2 6h-2v8" fill={active ? "currentColor" : "none"} fillOpacity={active ? "0.12" : "0"} />
+    </svg>
   );
 }
 

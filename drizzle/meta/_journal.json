@@ -36,6 +36,13 @@
       "when": 1780828462473,
       "tag": "0004_chilly_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780830781179,
+      "tag": "0005_stale_absorbing_man",
+      "breakpoints": true
     }
   ]
 }

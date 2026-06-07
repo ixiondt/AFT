@@ -100,6 +100,7 @@ export type InitialFormValues = {
   sex?: Sex | "";
   bodyweightLb?: string;
   goalBodyweightLb?: string;
+  heightIn?: string;
   daysPerWeek?: string;
   durationWeeks?: number;
   testDate?: string;
@@ -219,6 +220,15 @@ export function ProfileForm({
             defaultValue={iv.goalBodyweightLb}
             min={80}
             max={500}
+          />
+          <NumberInput
+            name="heightIn"
+            label="Height (in, optional)"
+            placeholder="e.g. 70"
+            defaultValue={iv.heightIn}
+            min={48}
+            max={96}
+            hint="Needed for body comp tab"
           />
         </Row>
         {validAge && (

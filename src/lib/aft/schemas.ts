@@ -49,6 +49,13 @@ export const PROFILE_FORM_SCHEMA = z.object({
     .max(500)
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  heightIn: z.coerce
+    .number()
+    .int()
+    .min(48)
+    .max(96)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   daysPerWeek: z.coerce.number().int().refine((n) => [3, 4, 5, 6].includes(n), "Choose 3, 4, 5, or 6"),
   durationWeeks: z.coerce.number().int().min(6).max(26),
   testDate: z.string().min(1, "Pick a test date"),

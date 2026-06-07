@@ -7,6 +7,7 @@ export type InitialFormValues = {
   sex?: "MC" | "F" | "";
   bodyweightLb?: string;
   goalBodyweightLb?: string;
+  heightIn?: string;
   daysPerWeek?: string;
   durationWeeks?: number;
   testDate?: string; // YYYY-MM-DD
@@ -44,6 +45,7 @@ export async function loadInitialFormValues(userId: string): Promise<InitialForm
     out.age = String(profile.age);
     out.sex = profile.sex;
     out.bodyweightLb = String(profile.bodyweightLb);
+    if (profile.heightIn) out.heightIn = String(profile.heightIn);
     out.daysPerWeek = String(profile.daysPerWeek);
     out.equipment = (profile.equipment ?? []) as string[];
     out.injuries = (profile.injuries ?? []) as string[];
