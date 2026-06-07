@@ -51,6 +51,7 @@ export function AppNav({
                 <Link
                   key={t.href}
                   href={t.href}
+                  prefetch
                   className={
                     "rounded-full px-3 py-1.5 text-xs font-medium transition-colors " +
                     (Active
@@ -98,6 +99,7 @@ export function AppNav({
               <li key={t.href}>
                 <Link
                   href={t.href}
+                  prefetch
                   className={
                     "flex flex-col items-center gap-0.5 py-2 text-[10px] " +
                     (Active
