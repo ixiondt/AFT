@@ -180,6 +180,29 @@ export const plans = pgTable(
   }),
 );
 
+/** Chat with Groq about the plan — message log + which edits each turn applied. */
+export const planChatMessages = pgTable(
+  "plan_chat_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    content: text("content").notNull(),
+    /** Edit ops the assistant applied this turn (null for user messages or assistant messages with no edits). */
+    appliedEdits: jsonb("applied_edits"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    planIdx: index("plan_chat_plan_idx").on(t.planId, t.createdAt),
+    userIdx: index("plan_chat_user_idx").on(t.userId),
+  }),
+);
+
 /** One row per scheduled workout in the plan; mark complete as you go. */
 export const workouts = pgTable(
   "workouts",
