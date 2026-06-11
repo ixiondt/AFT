@@ -31,6 +31,8 @@ export async function logWeightAction(formData: FormData): Promise<void> {
   }
 
   revalidatePath("/plan");
+  revalidatePath("/body");
+  revalidatePath("/progress");
 }
 
 export async function deleteWeightAction(formData: FormData): Promise<void> {
@@ -40,4 +42,6 @@ export async function deleteWeightAction(formData: FormData): Promise<void> {
   if (!entryId) return;
   await deleteWeightEntry({ userId: session.user.id, entryId });
   revalidatePath("/plan");
+  revalidatePath("/body");
+  revalidatePath("/progress");
 }

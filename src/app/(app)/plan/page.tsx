@@ -58,9 +58,11 @@ export default async function PlanPage() {
   const weightEntries = await loadWeightLog({
     userId: session.user.id,
   });
-  // Goal bodyweight isn't directly captured; surface starting bodyweight as the
-  // "current" for the form prefill so the first log is one tap.
-  const startingWeight = plan.input.bodyweightLb;
+  // Prefill the log form with the most recent weigh-in so the next log is one
+  // tap — only fall back to the plan's starting bodyweight when nothing has
+  // been logged yet.
+  const latestLoggedWeight =
+    weightEntries[weightEntries.length - 1]?.weightLb ?? plan.input.bodyweightLb;
   const workoutLogs = await loadWorkoutsForPlan({
     userId: session.user.id,
     planId: planRow.id,
@@ -68,14 +70,14 @@ export default async function PlanPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      <header className="flex items-baseline justify-between border-b border-[var(--color-line)] pb-4 print:border-b-0">
+      <header className="flex flex-col gap-4 border-b border-[var(--color-line)] pb-4 sm:flex-row sm:items-baseline sm:justify-between print:border-b-0">
         <div>
           <p className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
             Active plan
           </p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Your AFT program</h1>
         </div>
-        <div className="flex items-center gap-3 print:hidden">
+        <div className="flex flex-wrap items-center gap-2 print:hidden sm:gap-3">
           <Link
             href="/calendar"
             className="rounded-lg border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
@@ -116,7 +118,7 @@ export default async function PlanPage() {
         <CheckpointList plan={plan} />
         <WeightTracker
           entries={weightEntries}
-          currentWeightLb={startingWeight}
+          currentWeightLb={latestLoggedWeight}
           {...(plan.input.goalBodyweightLb
             ? { goalWeightLb: plan.input.goalBodyweightLb }
             : {})}
