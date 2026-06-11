@@ -77,4 +77,5 @@ export async function logBodyMetricsAction(formData: FormData): Promise<void> {
   revalidatePath("/body");
   revalidatePath("/plan");
   revalidatePath("/progress");
+  revalidatePath("/dashboard");
 }

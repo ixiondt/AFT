@@ -44,6 +44,9 @@ export async function markWorkoutAction(formData: FormData): Promise<void> {
 
   await setFlash(completed ? "Workout marked done" : "Completion cleared");
   revalidatePath("/plan");
+  revalidatePath("/calendar");
+  revalidatePath("/progress");
+  revalidatePath("/dashboard");
 }
 
 export async function logWorkoutDetailsAction(formData: FormData): Promise<void> {
@@ -78,4 +81,7 @@ export async function logWorkoutDetailsAction(formData: FormData): Promise<void>
 
   await setFlash("Workout details saved");
   revalidatePath("/plan");
+  revalidatePath("/calendar");
+  revalidatePath("/progress");
+  revalidatePath("/dashboard");
 }

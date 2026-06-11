@@ -33,6 +33,7 @@ export async function logWeightAction(formData: FormData): Promise<void> {
   revalidatePath("/plan");
   revalidatePath("/body");
   revalidatePath("/progress");
+  revalidatePath("/dashboard");
 }
 
 export async function deleteWeightAction(formData: FormData): Promise<void> {
@@ -44,4 +45,5 @@ export async function deleteWeightAction(formData: FormData): Promise<void> {
   revalidatePath("/plan");
   revalidatePath("/body");
   revalidatePath("/progress");
+  revalidatePath("/dashboard");
 }
