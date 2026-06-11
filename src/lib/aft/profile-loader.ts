@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/lib/db";
 import { secToMmss } from "@/lib/scoring";
+import { loadWeightLog } from "./weight-service";
 
 export type InitialFormValues = {
   age?: string;
@@ -23,7 +24,7 @@ const blankRaw = { mdl: "", hrp: "", sdc: "", plk: "", mr2: "" } as const;
 
 /** Load whatever a user has previously saved, normalized for form prefill. */
 export async function loadInitialFormValues(userId: string): Promise<InitialFormValues> {
-  const [profile, goal, latestTest, latestPlan] = await Promise.all([
+  const [profile, goal, latestTest, latestPlan, weightLog] = await Promise.all([
     db.query.profiles.findFirst({ where: eq(schema.profiles.userId, userId) }),
     db.query.goals.findFirst({
       where: and(eq(schema.goals.userId, userId), eq(schema.goals.active, true)),
@@ -37,6 +38,7 @@ export async function loadInitialFormValues(userId: string): Promise<InitialForm
       where: and(eq(schema.plans.userId, userId), eq(schema.plans.active, true)),
       orderBy: [desc(schema.plans.createdAt)],
     }),
+    loadWeightLog({ userId }),
   ]);
 
   const out: InitialFormValues = {};
@@ -44,7 +46,11 @@ export async function loadInitialFormValues(userId: string): Promise<InitialForm
   if (profile) {
     out.age = String(profile.age);
     out.sex = profile.sex;
-    out.bodyweightLb = String(profile.bodyweightLb);
+    // Prefer the most recent weigh-in over the bodyweight captured at last
+    // profile save — otherwise regenerating the plan re-uses a stale weight
+    // and the MDL programming scales off the wrong number.
+    const latestWeightLb = weightLog[weightLog.length - 1]?.weightLb;
+    out.bodyweightLb = String(latestWeightLb ?? profile.bodyweightLb);
     if (profile.heightIn) out.heightIn = String(profile.heightIn);
     out.daysPerWeek = String(profile.daysPerWeek);
     out.equipment = (profile.equipment ?? []) as string[];
