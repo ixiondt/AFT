@@ -1,4 +1,5 @@
 import type { WeightLogEntry } from "@/lib/aft/weight-service";
+import { SubmitButton } from "../../submit-button";
 import { deleteWeightAction, logWeightAction } from "./weight-actions";
 
 const CHART_W = 600;
@@ -34,7 +35,7 @@ export function WeightTracker({
       : 0;
 
   return (
-    <section className="print:hidden">
+    <section id="weight-log" className="scroll-mt-20 print:hidden">
       <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
         Weight log
       </h2>
@@ -90,8 +91,11 @@ export function WeightTracker({
             <input
               name="weightLb"
               type="number"
+              inputMode="numeric"
+              enterKeyHint="done"
               min={60}
               max={600}
+              step={1}
               required
               defaultValue={currentWeightLb ?? ""}
               className="mt-1 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
@@ -105,16 +109,17 @@ export function WeightTracker({
               name="notes"
               type="text"
               maxLength={200}
+              enterKeyHint="done"
               placeholder="post-run, fasted, etc."
               className="mt-1 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
             />
           </label>
-          <button
-            type="submit"
+          <SubmitButton
+            pendingLabel="Logging…"
             className="w-full rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium text-[var(--color-accent-fg)] hover:opacity-90"
           >
             Log
-          </button>
+          </SubmitButton>
         </form>
       </div>
 

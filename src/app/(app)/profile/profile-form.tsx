@@ -10,6 +10,7 @@ import {
   secToMmss,
 } from "@/lib/scoring";
 import type { Event as AftEvent, Sex } from "@/lib/scoring/types";
+import { SubmitButton } from "../../submit-button";
 
 const EVENT_STEP: Record<AftEvent, number> = {
   MDL: 5,
@@ -172,6 +173,11 @@ export function ProfileForm({
     setTestDate(addDaysIso(today, weeks * 7));
   };
 
+  // A preset is "active" only when both duration AND test date still match —
+  // any manual tweak to either field drops the highlight.
+  const activePresetWeeks =
+    testDate === addDaysIso(today, duration * 7) ? duration : null;
+
   return (
     <form action={action} className="mt-8 space-y-10">
       {initialError && (
@@ -241,10 +247,10 @@ export function ProfileForm({
       <Section title="Training availability">
         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
           <span className="text-[var(--color-ink-3)]">Quick fill:</span>
-          <PresetButton onClick={() => applyPreset(13)}>Today + 13 wk (90 days)</PresetButton>
-          <PresetButton onClick={() => applyPreset(8)}>Today + 8 wk</PresetButton>
-          <PresetButton onClick={() => applyPreset(6)}>Today + 6 wk</PresetButton>
-          <PresetButton onClick={() => applyPreset(18)}>Today + 18 wk</PresetButton>
+          <PresetButton active={activePresetWeeks === 13} onClick={() => applyPreset(13)}>Today + 13 wk (90 days)</PresetButton>
+          <PresetButton active={activePresetWeeks === 8} onClick={() => applyPreset(8)}>Today + 8 wk</PresetButton>
+          <PresetButton active={activePresetWeeks === 6} onClick={() => applyPreset(6)}>Today + 6 wk</PresetButton>
+          <PresetButton active={activePresetWeeks === 18} onClick={() => applyPreset(18)}>Today + 18 wk</PresetButton>
         </div>
         <Row>
           <Select name="daysPerWeek" label="Days per week" defaultValue={iv.daysPerWeek ?? "5"} required>
@@ -354,12 +360,12 @@ export function ProfileForm({
       />
 
       <div className="border-t border-[var(--color-line)] pt-6">
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel="Generating…"
           className="rounded-lg bg-[var(--color-accent)] px-5 py-2.5 text-sm font-medium text-[var(--color-accent-fg)] hover:opacity-90"
         >
           Generate my plan
-        </button>
+        </SubmitButton>
       </div>
     </form>
   );
@@ -909,12 +915,26 @@ function CheckGroup(props: {
   );
 }
 
-function PresetButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+function PresetButton({
+  onClick,
+  children,
+  active = false,
+}: {
+  onClick: () => void;
+  children: React.ReactNode;
+  active?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1 text-xs text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+      aria-pressed={active}
+      className={
+        "rounded-full border px-3 py-1 text-xs transition-colors " +
+        (active
+          ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)] text-[var(--color-accent)] font-medium"
+          : "border-[var(--color-line)] bg-white text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]")
+      }
     >
       {children}
     </button>
