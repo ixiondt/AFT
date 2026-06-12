@@ -66,7 +66,7 @@ export function ChatPanel({
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close coach chat" : "Open coach chat"}
         aria-expanded={open}
-        className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-medium text-[var(--color-accent-fg)] shadow-lg shadow-black/20 transition-transform hover:scale-105 active:scale-95 print:hidden md:bottom-6 md:right-6"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] right-4 z-50 flex items-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-3 text-sm font-medium text-[var(--color-accent-fg)] shadow-lg shadow-black/20 transition-transform hover:scale-105 active:scale-95 print:hidden sm:bottom-5 sm:right-5 md:bottom-6 md:right-6"
       >
         <SparkleIcon />
         <span className="hidden sm:inline">AI Coach</span>

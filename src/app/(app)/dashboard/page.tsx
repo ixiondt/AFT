@@ -95,6 +95,14 @@ export default async function DashboardPage({
     totalPrescribed > 0 ? Math.round((totalCompleted / totalPrescribed) * 100) : 0;
 
   const latestWeight = snapshot.weightLog[snapshot.weightLog.length - 1];
+  // "Stale" if the most recent weigh-in is older than 7 days (or there is none).
+  const weightStaleDays = latestWeight
+    ? Math.floor(
+        (Date.now() - Date.parse(latestWeight.recordedAt)) / 86_400_000,
+      )
+    : null;
+  const weightNeedsLog =
+    !latestWeight || (weightStaleDays !== null && weightStaleDays >= 7);
 
   // Find today's prescription (best-effort — day-0 = startDate)
   const startMs = planRow.startDate.getTime();
@@ -148,6 +156,20 @@ export default async function DashboardPage({
           </p>
         )}
       </section>
+
+      {weightNeedsLog && (
+        <Link
+          href="/plan#weight-log"
+          className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+        >
+          <span>
+            {latestWeight
+              ? `Last weigh-in was ${weightStaleDays} days ago.`
+              : "No weigh-ins logged yet."}{" "}
+            <span className="font-medium text-[var(--color-ink)]">Log today's weight →</span>
+          </span>
+        </Link>
+      )}
 
       {todaySession && (
         <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">

@@ -1,6 +1,7 @@
 import { secToMmss } from "@/lib/scoring";
 import type { BlockName, Plan, SessionPrescription, SessionType } from "@/lib/planner";
 import type { WorkoutLog } from "@/lib/aft/workout-service";
+import { SubmitButton } from "../../submit-button";
 import { WeekControls } from "./week-controls";
 import { logWorkoutDetailsAction, markWorkoutAction } from "./workout-actions";
 
@@ -391,7 +392,7 @@ export function WeeklyCalendar({
   // Open the first week by default; others collapsed.
   return (
     <section className="print-break-before">
-      <div className="flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-10 -mx-6 flex items-center justify-between gap-3 border-b border-[var(--color-line)] bg-[var(--color-bg)]/95 px-6 py-2 backdrop-blur supports-[backdrop-filter]:bg-[color-mix(in_oklch,var(--color-bg)_85%,transparent)] sm:top-[2.75rem] print:static print:border-b-0 print:bg-transparent print:px-0 print:py-0 print:backdrop-blur-none">
         <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
           Week-by-week
         </h2>
@@ -546,13 +547,12 @@ function DaySummary({
               <input type="hidden" name="weekIndex" value={weekIndex} />
               <input type="hidden" name="dayOfWeek" value={dayOfWeek} />
               <input type="hidden" name="action" value="mark" />
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="…"
                 className="rounded-md border border-[var(--color-line)] bg-white px-2 py-0.5 text-[11px] text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-                title="Mark this workout done"
               >
                 ✓ Done
-              </button>
+              </SubmitButton>
             </form>
           )}
           {done && (
@@ -560,13 +560,12 @@ function DaySummary({
               <input type="hidden" name="weekIndex" value={weekIndex} />
               <input type="hidden" name="dayOfWeek" value={dayOfWeek} />
               <input type="hidden" name="action" value="unmark" />
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="…"
                 className="text-[11px] text-[var(--color-ink-3)] hover:text-[var(--color-danger)]"
-                title="Undo completion"
               >
                 undo
-              </button>
+              </SubmitButton>
             </form>
           )}
         </div>
@@ -716,12 +715,12 @@ function DaySummary({
               </div>
 
               <div className="flex items-center justify-end gap-2">
-                <button
-                  type="submit"
+                <SubmitButton
+                  pendingLabel="Saving…"
                   className="rounded-md bg-[var(--color-accent)] px-3 py-1 text-[11px] font-medium text-[var(--color-accent-fg)] hover:opacity-90"
                 >
                   Save log
-                </button>
+                </SubmitButton>
               </div>
             </form>
           </details>
