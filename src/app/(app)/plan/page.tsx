@@ -21,6 +21,7 @@ import {
 import { ChatPanel, type ChatMessageView } from "./chat-panel";
 import { PrintButton } from "./print-button";
 import { WeightTracker } from "./weight-tracker";
+import { Callout, Chip } from "@/components/ui";
 
 export default async function PlanPage() {
   const session = await auth();
@@ -106,6 +107,28 @@ export default async function PlanPage() {
           </Link>
         </div>
       </header>
+
+      <Callout tone="info" title="Your program at a glance" className="mt-6 print:hidden">
+        <span>
+          {plan.input.durationWeeks} weeks · {plan.currentTotal} → {plan.goalTotal} pts
+          · test {new Date(plan.input.testDate).toLocaleDateString()}. Log actuals
+          and mark sessions done to keep it honest.
+        </span>
+        <span className="mt-2 flex flex-wrap gap-1.5">
+          <Chip color="var(--color-2mr)">{plan.input.daysPerWeek} days/week</Chip>
+          {plan.input.preferences.calisthenicsPreferred && (
+            <Chip color="var(--color-hrp)">calisthenics</Chip>
+          )}
+          {plan.input.preferences.activeRecovery && (
+            <Chip color="var(--color-plk)">active recovery</Chip>
+          )}
+          {plan.input.injuries.map((inj) => (
+            <Chip key={inj} tone="warn">
+              {inj.replace("_", " ")}
+            </Chip>
+          ))}
+        </span>
+      </Callout>
 
       <div className="mt-8 space-y-10">
         <PlanSummary plan={plan} />
