@@ -6,6 +6,15 @@ import { db, schema } from "@/lib/db";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import { loadProgressSnapshot } from "@/lib/aft/progress-service";
 import type { Plan } from "@/lib/planner";
+import {
+  Callout,
+  Chip,
+  Explainer,
+  ProgressBar,
+  Stat,
+  Timeline,
+  TimelineItem,
+} from "@/components/ui";
 import { PinSetupCard } from "./pin-setup";
 
 export default async function DashboardPage({
@@ -35,14 +44,7 @@ export default async function DashboardPage({
       <main className="mx-auto max-w-3xl px-6 py-12">
         <header className="flex items-baseline justify-between border-b border-[var(--color-line)] pb-4">
           <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="text-sm text-[var(--color-ink-3)] hover:text-[var(--color-ink)]"
-            >
-              Sign out
-            </button>
-          </form>
+          <SignOut action={signOutAction} />
         </header>
 
         <div className="mt-6">
@@ -93,6 +95,8 @@ export default async function DashboardPage({
   const totalCompleted = snapshot.completion.reduce((a, w) => a + w.completed, 0);
   const adherence =
     totalPrescribed > 0 ? Math.round((totalCompleted / totalPrescribed) * 100) : 0;
+  const adherenceTone = adherence >= 80 ? "good" : adherence >= 50 ? "warn" : "danger";
+  const pointsToGoal = Math.max(0, plan.goalTotal - plan.currentTotal);
 
   const latestWeight = snapshot.weightLog[snapshot.weightLog.length - 1];
   // "Stale" if the most recent weigh-in is older than 7 days (or there is none).
@@ -113,6 +117,9 @@ export default async function DashboardPage({
   const todayWeek = plan.weeks[weekIndex];
   const todaySession = todayWeek?.days.find((d) => d.dayOfWeek === dayOfWeek)?.session;
 
+  // Recent activity — real data only: the last few weigh-ins + plan creation.
+  const recentWeighIns = [...snapshot.weightLog].slice(-3).reverse();
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <header className="flex items-baseline justify-between border-b border-[var(--color-line)] pb-4">
@@ -124,28 +131,45 @@ export default async function DashboardPage({
             Welcome back
           </h1>
         </div>
-        <form action={signOutAction}>
-          <button
-            type="submit"
-            className="text-sm text-[var(--color-ink-3)] hover:text-[var(--color-ink)]"
-          >
-            Sign out
-          </button>
-        </form>
+        <SignOut action={signOutAction} />
       </header>
 
-      <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-5">
+      {/* Hero: headline metrics + completion bar */}
+      <section className="mt-6 rounded-xl border border-[var(--color-line)] bg-[var(--color-bg-2)] p-5">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Current" value={`${plan.currentTotal}`} unit="pts" />
-          <Stat label="Goal" value={`${plan.goalTotal}`} unit="pts" />
-          <Stat label="Days to test" value={`${daysToTest}`} />
+          <Stat label="Current" value={plan.currentTotal} unit="pts" />
+          <Stat
+            label="Goal"
+            value={plan.goalTotal}
+            unit="pts"
+            tone="good"
+            trend={pointsToGoal > 0 ? `${pointsToGoal} to go` : "target met"}
+          />
+          <Stat
+            label="Days to test"
+            value={daysToTest}
+            trend={testDate.toLocaleDateString()}
+          />
           <Stat
             label="Adherence"
-            value={`${adherence}`}
+            value={adherence}
             unit="%"
             tone={adherence >= 80 ? "good" : adherence >= 50 ? "ok" : "warn"}
+            trend={
+              totalPrescribed > 0
+                ? `${totalCompleted}/${totalPrescribed} sessions`
+                : "no sessions yet"
+            }
           />
         </div>
+
+        <ProgressBar
+          className="mt-5"
+          value={adherence}
+          tone={adherenceTone}
+          label="Plan completion"
+        />
+
         {latestWeight && (
           <p className="mt-3 text-xs text-[var(--color-ink-3)]">
             Latest weight:{" "}
@@ -157,32 +181,47 @@ export default async function DashboardPage({
         )}
       </section>
 
+      {/* Guidance — conservative, data-driven nudges */}
       {weightNeedsLog && (
-        <Link
-          href="/plan#weight-log"
-          className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-dashed border-[var(--color-line)] bg-white px-4 py-3 text-sm text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
-        >
-          <span>
-            {latestWeight
-              ? `Last weigh-in was ${weightStaleDays} days ago.`
-              : "No weigh-ins logged yet."}{" "}
-            <span className="font-medium text-[var(--color-ink)]">Log today's weight →</span>
-          </span>
-        </Link>
+        <Callout tone="info" title="Log today's weight" className="mt-4">
+          {latestWeight
+            ? `Last weigh-in was ${weightStaleDays} days ago. `
+            : "No weigh-ins logged yet. "}
+          <Link href="/plan#weight-log" className="font-medium text-[var(--color-info)] hover:underline">
+            Log it now →
+          </Link>
+        </Callout>
       )}
 
+      {totalPrescribed > 0 && adherence < 50 && (
+        <Callout tone="warn" title="Consistency before intensity" className="mt-4">
+          Completion is under half. The plan holds steady rather than piling on
+          load — bank a few sessions first, then it adapts.
+        </Callout>
+      )}
+
+      {totalPrescribed > 0 && adherence >= 80 && (
+        <Callout tone="good" title="Dialed in" className="mt-4">
+          Adherence is strong. Keep logging actuals so the plan can push the
+          right events at the right time.
+        </Callout>
+      )}
+
+      {/* Today's session */}
       {todaySession && (
         <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">
-          <p className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
-            Today's session
-          </p>
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
+              Today's session
+            </p>
+            <Chip color="var(--color-accent)">
+              Week {(weekIndex ?? 0) + 1} ·{" "}
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dayOfWeek]}
+            </Chip>
+          </div>
           <h2 className="mt-1 text-lg font-semibold text-[var(--color-ink)]">
             {todaySession.title}
           </h2>
-          <p className="mt-1 text-xs text-[var(--color-ink-3)]">
-            Week {(weekIndex ?? 0) + 1} ·{" "}
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][dayOfWeek]}
-          </p>
           {todaySession.main.length > 0 && (
             <ul className="mt-3 space-y-0.5 text-[11px] text-[var(--color-ink-2)]">
               {todaySession.main.slice(0, 4).map((ex, i) => (
@@ -204,6 +243,32 @@ export default async function DashboardPage({
           >
             View full plan →
           </Link>
+        </section>
+      )}
+
+      {/* Recent activity */}
+      {recentWeighIns.length > 0 && (
+        <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">
+          <h2 className="text-sm font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
+            Recent activity
+          </h2>
+          <Timeline className="mt-4">
+            {recentWeighIns.map((w, i) => (
+              <TimelineItem
+                key={i}
+                title={`Weighed in · ${w.weightLb} lb`}
+                meta={new Date(w.recordedAt).toLocaleDateString()}
+                tone="info"
+              />
+            ))}
+            <TimelineItem
+              title="Plan generated"
+              meta={new Date(plan.generatedAt).toLocaleDateString()}
+              tone="neutral"
+            >
+              {plan.input.durationWeeks}-week program · goal {plan.goalTotal} pts
+            </TimelineItem>
+          </Timeline>
         </section>
       )}
 
@@ -233,6 +298,11 @@ export default async function DashboardPage({
             sub="Trends, adherence, MDL/HRP/Plank curves"
           />
           <ActionCard
+            href="/body"
+            title="Body composition"
+            sub="Weight + WHtR against the Army standard"
+          />
+          <ActionCard
             href="/profile"
             title="Adjust profile or regenerate"
             sub="Update scores, goals, test date, preferences"
@@ -244,6 +314,16 @@ export default async function DashboardPage({
             download="aft-plan.ics"
           />
         </div>
+
+        <Explainer
+          className="mt-4"
+          question="How is adherence calculated?"
+        >
+          Adherence is completed sessions ÷ prescribed sessions across every week
+          of the plan so far ({totalCompleted}/{totalPrescribed}). Mark sessions
+          done on the plan page to move it. It's deliberately forgiving of a
+          single missed day — the weekly view is where trends drive changes.
+        </Explainer>
       </section>
 
       <p className="mt-12 text-xs text-[var(--color-ink-3)]">
@@ -256,35 +336,16 @@ export default async function DashboardPage({
   );
 }
 
-function Stat({
-  label,
-  value,
-  unit,
-  tone,
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  tone?: "good" | "ok" | "warn";
-}) {
-  const color =
-    tone === "good"
-      ? "text-[var(--color-accent)]"
-      : tone === "warn"
-        ? "text-[var(--color-danger)]"
-        : "text-[var(--color-ink)]";
+function SignOut({ action }: { action: () => Promise<void> }) {
   return (
-    <div>
-      <div className="text-xs text-[var(--color-ink-3)]">{label}</div>
-      <div className={`font-mono text-2xl font-semibold ${color}`}>
-        {value}
-        {unit && (
-          <span className="ml-1 text-sm font-normal text-[var(--color-ink-3)]">
-            {unit}
-          </span>
-        )}
-      </div>
-    </div>
+    <form action={action}>
+      <button
+        type="submit"
+        className="text-sm text-[var(--color-ink-3)] hover:text-[var(--color-ink)]"
+      >
+        Sign out
+      </button>
+    </form>
   );
 }
 

@@ -5,6 +5,7 @@ import { loadActivePlan } from "@/lib/aft/plan-service";
 import { loadProgressSnapshot } from "@/lib/aft/progress-service";
 import type { Plan } from "@/lib/planner";
 import { secToMmss } from "@/lib/scoring";
+import { Callout, ProgressBar, Stat } from "@/components/ui";
 import { CompletionCard, WeeklyChartCard } from "./charts";
 
 export default async function ProgressPage() {
@@ -41,6 +42,12 @@ export default async function ProgressPage() {
     Math.round((testDate.getTime() - Date.now()) / 86_400_000),
   );
 
+  const totalPrescribed = snapshot.completion.reduce((a, w) => a + w.prescribed, 0);
+  const totalCompleted = snapshot.completion.reduce((a, w) => a + w.completed, 0);
+  const adherence =
+    totalPrescribed > 0 ? Math.round((totalCompleted / totalPrescribed) * 100) : 0;
+  const adherenceTone = adherence >= 80 ? "good" : adherence >= 50 ? "warn" : "danger";
+
   // Map weight log → WeeklyPoint by snapping each entry to its closest week.
   const weeklyWeight = snapshot.weightLog.length
     ? snapToWeeks(snapshot.weightLog, planRow.startDate, plan.input.durationWeeks)
@@ -68,16 +75,28 @@ export default async function ProgressPage() {
         </Link>
       </header>
 
-      <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-6">
+      <section className="mt-6 rounded-xl border border-[var(--color-line)] bg-[var(--color-bg-2)] p-6">
         <div className="flex flex-wrap items-baseline gap-x-8 gap-y-3">
-          <Stat label="Current" value={`${plan.currentTotal} pts`} />
+          <Stat label="Current" value={plan.currentTotal} unit="pts" size="md" />
           <span className="text-2xl text-[var(--color-ink-3)]">→</span>
-          <Stat label="Goal" value={`${plan.goalTotal} pts`} />
+          <Stat label="Goal" value={plan.goalTotal} unit="pts" size="md" tone="good" />
           <span className="hidden md:inline text-2xl text-[var(--color-ink-3)]">·</span>
-          <Stat label="Test date" value={plan.input.testDate} />
-          <Stat label="Days to go" value={`${daysToTest}`} />
-          <Stat label="Logged actuals" value={`${snapshot.totalActuals}`} />
+          <Stat label="Test date" value={plan.input.testDate} size="md" />
+          <Stat label="Days to go" value={daysToTest} size="md" />
+          <Stat label="Logged actuals" value={snapshot.totalActuals} size="md" />
         </div>
+
+        <ProgressBar
+          className="mt-5"
+          value={adherence}
+          tone={adherenceTone}
+          label="Overall completion"
+          valueLabel={
+            totalPrescribed > 0
+              ? `${totalCompleted}/${totalPrescribed} · ${adherence}%`
+              : "no sessions logged yet"
+          }
+        />
       </section>
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -117,20 +136,11 @@ export default async function ProgressPage() {
         />
       </div>
 
-      <footer className="mt-10 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
-        Charts auto-populate as you mark workouts done and log actuals on the plan.
-        Empty cards aren't broken — just no data there yet.
-      </footer>
+      <Callout tone="info" className="mt-10">
+        Charts auto-populate as you mark workouts done and log actuals on the
+        plan. Empty cards aren't broken — just no data there yet.
+      </Callout>
     </main>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs text-[var(--color-ink-3)]">{label}</div>
-      <div className="font-mono text-base text-[var(--color-ink)]">{value}</div>
-    </div>
   );
 }
 
