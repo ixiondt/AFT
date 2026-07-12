@@ -5,13 +5,16 @@ import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { loadWeightLog, type WeightLogEntry } from "@/lib/aft/weight-service";
 import {
+  ARMY_WHTR_MAX,
   armyBodyFatMaxPct,
   tapeBodyFatPct,
   tapeBodyFatPctMultiSite,
   whtR,
+  whtRArmyPass,
   whtRBand,
   whtRBandLabel,
 } from "@/lib/aft/body-comp";
+import { Callout } from "@/components/ui";
 import { logBodyMetricsAction, setHeightAction } from "./actions";
 
 const BAND_COLOR: Record<string, string> = {
@@ -39,10 +42,18 @@ export default async function BodyPage() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Height &amp; Weight</h1>
         <p className="mt-1 text-xs text-[var(--color-ink-3)]">
-          Tracks weight, Waist-to-Height Ratio (WHtR), and tape-test body fat %.
-          All measurements are optional — log what you have.
+          Waist-to-Height Ratio (WHtR) is the Army body-composition standard.
+          Weight and legacy tape body-fat % are tracked for reference.
         </p>
       </header>
+
+      <Callout tone="info" title="WHtR is now the only standard" className="mt-5">
+        Per the Jan 2026 directive, a waist-to-height ratio{" "}
+        <span className="font-mono">&lt; {ARMY_WHTR_MAX}</span> is the sole
+        authorized body-composition test. There is no tape / DXA / InBody
+        appeal, and no AFT-score (465+) exemption — the tape body-fat % below is
+        kept for reference and historical worksheets only.
+      </Callout>
 
       {!profile?.heightIn ? (
         <HeightSetup />
@@ -70,19 +81,19 @@ export default async function BodyPage() {
       <History log={log} profile={profile ?? null} />
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
-        Body fat % uses the current Army single-site standard
-        (ALARACT 053/2024, effective 9 Jun 2024): weight + abdominal
-        circumference at the navel.
+        WHtR (waist ÷ height) is the sole Army body-composition standard —
+        pass is <span className="font-mono">&lt; {ARMY_WHTR_MAX}</span>. The tape
+        body-fat % is the legacy single-site formula (ALARACT 053/2024), kept
+        for reference and DA 5500/5501 worksheets only:
         <br />
         Male: <span className="font-mono">%BF = -26.97 - 0.12·weight + 1.99·abdomen</span>
         <br />
         Female: <span className="font-mono">%BF = -9.15 - 0.015·weight + 1.27·abdomen</span>
         <br />
-        Height isn't in the BF% formula — it's only used for WHtR (waist/height,
-        thresholds per WHO + NIH PMC5118501). Age sets the pass/fail max, not
-        the calculation. If you log neck (and hip, for women), the history
-        table surfaces the legacy Hodgdon-Beckett multi-site number as a
-        second column for comparison.
+        Height isn't in the BF% formula — only WHtR uses it. The finer WHtR
+        health-risk bands are WHO / NIH (PMC5118501), separate from the 0.55
+        pass line. If you log neck (and hip, for women), the history table also
+        surfaces the legacy Hodgdon-Beckett multi-site number for comparison.
       </footer>
     </main>
   );
@@ -178,14 +189,14 @@ function CurrentSummary({
   latest: WeightLogEntry | null;
 }) {
   const heightIn = profile.heightIn ?? 0;
-  // For males, WHtR can use abdomen if waist isn't logged separately —
-  // the Army's abdominal circumference is functionally the same measurement.
+  // WHtR waist is measured at the navel — the same site as the Army's
+  // abdominal circumference — so fall back to abdomen when waist isn't logged
+  // separately. Applies to both sexes now that WHtR is the sole standard.
   const waistOrAbdomen =
-    profile.sex === "MC"
-      ? latest?.measurements?.waistIn ?? latest?.measurements?.abdomenIn
-      : latest?.measurements?.waistIn;
+    latest?.measurements?.waistIn ?? latest?.measurements?.abdomenIn;
   const ratio = whtR(waistOrAbdomen, heightIn);
   const band = ratio !== null ? whtRBand(ratio) : null;
+  const armyPass = ratio !== null ? whtRArmyPass(ratio) : null;
   const bf = latest
     ? tapeBodyFatPct({
         sex: profile.sex,
@@ -211,56 +222,53 @@ function CurrentSummary({
         </p>
       </Card>
 
-      <Card title="WHtR">
-        {ratio !== null && band !== null ? (
+      <Card title="WHtR — Army standard">
+        {ratio !== null && band !== null && armyPass !== null ? (
           <>
             <div
               className="font-mono text-3xl font-bold"
-              style={{ color: BAND_COLOR[band] }}
+              style={{
+                color: armyPass ? "var(--color-accent)" : "var(--color-danger)",
+              }}
             >
               {ratio.toFixed(2)}
             </div>
             <p
-              className="mt-1 text-[10px] uppercase tracking-wider"
-              style={{ color: BAND_COLOR[band] }}
+              className="mt-1 text-[10px] font-semibold uppercase tracking-wider"
+              style={{
+                color: armyPass ? "var(--color-accent)" : "var(--color-danger)",
+              }}
             >
-              {whtRBandLabel(band)}
+              {armyPass ? "Pass" : "Fail — flag / ABCP"}
             </p>
             <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
-              target &lt; 0.50
+              Army standard &lt; {ARMY_WHTR_MAX}
+            </p>
+            <p className="text-[10px]" style={{ color: BAND_COLOR[band] }}>
+              {whtRBandLabel(band)} (health)
             </p>
           </>
         ) : (
           <>
             <NoData />
             <p className="mt-1 text-[10px] text-[var(--color-ink-3)]">
-              Log {profile.sex === "MC" ? "abdomen" : "waist"} measurement
+              Log waist at navel
             </p>
           </>
         )}
       </Card>
 
-      <Card title="Body fat %">
+      <Card title="Body fat % — legacy">
         {bf !== null ? (
           <>
-            <div
-              className="font-mono text-3xl font-bold"
-              style={{
-                color:
-                  bf > bfMax
-                    ? "var(--color-danger)"
-                    : bf > bfMax - 2
-                      ? "var(--color-warn)"
-                      : "var(--color-accent)",
-              }}
-            >
+            <div className="font-mono text-3xl font-bold text-[var(--color-ink-2)]">
               {bf}%
             </div>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-              Army max: {bfMax}% (age {profile.age}, {profile.sex})
+              Ref only · old max {bfMax}% (age {profile.age}, {profile.sex})
             </p>
             <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
-              Single-site (abdomen + weight)
+              Tape test — no longer a standard
             </p>
           </>
         ) : (
@@ -322,12 +330,12 @@ function LogForm({
           />
           <Field
             name="abdomenIn"
-            label="Abdomen at navel (in)"
+            label="Waist at navel (in)"
             defaultValue={prefill.abdomenIn}
             step={0.1}
             min={20}
             max={70}
-            hint="Current Army standard"
+            hint="Drives WHtR — the Army standard"
           />
         </div>
         <details className="text-xs text-[var(--color-ink-3)]">
@@ -441,8 +449,8 @@ function ExportSection({ sex }: { sex: "MC" | "F" }) {
           </h2>
           <p className="mt-1 text-xs text-[var(--color-ink-3)]">
             Generates the official {formName} pre-filled with your most recent
-            log + the current Army single-site calculation. Sign + submit per
-            your unit's process.
+            log + the legacy single-site tape calculation. WHtR is the current
+            standard; use this only if your unit still requires the worksheet.
           </p>
         </div>
       </div>
@@ -522,19 +530,18 @@ function History({
             <tr>
               <th className="px-3 py-2 font-normal">Date</th>
               <th className="px-3 py-2 font-normal">Weight</th>
-              <th className="px-3 py-2 font-normal">{isMale ? "Abdomen" : "Waist"}</th>
+              <th className="px-3 py-2 font-normal">Waist</th>
               <th className="px-3 py-2 font-normal">WHtR</th>
-              <th className="px-3 py-2 font-normal">BF %</th>
-              {isMale && <th className="px-3 py-2 font-normal">BF % (legacy)</th>}
+              <th className="px-3 py-2 font-normal">BF % (ref)</th>
+              {isMale && <th className="px-3 py-2 font-normal">BF % (multi-site)</th>}
               <th className="px-3 py-2 font-normal">Note</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((e) => {
               const heightIn = profile?.heightIn ?? 0;
-              const waistOrAbdomen = isMale
-                ? e.measurements?.abdomenIn ?? e.measurements?.waistIn
-                : e.measurements?.waistIn;
+              const waistOrAbdomen =
+                e.measurements?.waistIn ?? e.measurements?.abdomenIn;
               const ratio = whtR(waistOrAbdomen, heightIn);
               const bf = profile
                 ? tapeBodyFatPct({

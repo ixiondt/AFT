@@ -1,16 +1,24 @@
 /**
  * Body composition helpers.
  *
- * - **WHtR** (Waist-to-Height Ratio): simple waist/height. Reference: WHO 2008
- *   + 2024 NIH (PMC5118501). Healthy < 0.5.
- * - **Army body fat %** (single-site, ALARACT 053/2024, effective 9 Jun 2024):
+ * **Policy note (Jan 2026 directive):** Waist-to-Height Ratio (WHtR) is now the
+ * *sole* authorized Army body-composition standard. A ratio **< 0.55 passes**;
+ * ≥ 0.55 flags the Soldier into the Army Body Composition Program. The tape
+ * test, DXA / InBody / Bod Pod appeals, and the AFT high-scorer (465+) body-fat
+ * exemption (Army Directive 2025-17) are all **removed** — WHtR is the only
+ * measurement, and the only way out of a failing ratio is to change the ratio.
+ *
+ * - **WHtR** (Waist-to-Height Ratio): waist ÷ height. Army pass/fail line is
+ *   0.55 (see `ARMY_WHTR_MAX` / `whtRArmyPass`). The finer `whtRBand` values
+ *   (healthy < 0.5, etc.) are WHO 2008 / 2024 NIH (PMC5118501) *health-risk*
+ *   context, NOT the compliance test.
+ * - **Army body fat % (LEGACY / reference only)** — single-site tape
+ *   (ALARACT 053/2024). No longer a compliance standard; retained for units
+ *   still transitioning and for historical worksheets (DA 5500/5501):
  *     Male:   %BF = -26.97 - 0.12·weight_lb + 1.99·abdomen_in
  *     Female: %BF =  -9.15 - 0.015·weight_lb + 1.27·abdomen_in
- *   Height is NOT in the BF% formula (only used here for WHtR). Age is NOT in
- *   the formula either — it only sets the pass/fail max via armyBodyFatMaxPct.
- * - **Legacy multi-site (Hodgdon-Beckett)** — what Guard units used before
- *   the 2024 update; still exposed via tapeBodyFatPctMultiSite() for
- *   comparison while units transition.
+ * - **Legacy multi-site (Hodgdon-Beckett)** — pre-2024 method; exposed via
+ *   tapeBodyFatPctMultiSite() for comparison only.
  */
 
 export type Sex = "MC" | "F";
@@ -47,6 +55,19 @@ export function whtRBandLabel(band: WhtRBand): string {
     case "very_high":
       return "Very high risk";
   }
+}
+
+/**
+ * The Army body-composition compliance threshold (waist ÷ height), per the
+ * Jan 2026 directive. `ratio < 0.55` passes; `ratio >= 0.55` triggers a flag
+ * and enrollment in the Army Body Composition Program. This is the *only*
+ * authorized standard — no tape/DXA appeal, no AFT-score exemption.
+ */
+export const ARMY_WHTR_MAX = 0.55;
+
+/** True when the WHtR meets the Army standard (strictly below 0.55). */
+export function whtRArmyPass(ratio: number): boolean {
+  return ratio < ARMY_WHTR_MAX;
 }
 
 /**
