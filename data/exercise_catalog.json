@@ -42,6 +42,39 @@
     { "id": "kb_swing_explosive", "name": "Heavy KB swing", "category": "accessory_explosive", "requires": ["kettlebell"], "calisthenic": false, "sets": 5, "reps": "10", "weightDescriptor": "70 lb / 32 kg" },
     { "id": "broad_jump", "name": "Broad jump", "category": "accessory_explosive", "requires": [], "calisthenic": true, "sets": 4, "reps": "5", "forbiddenInjuries": ["knee", "achilles"] },
     { "id": "jump_squat", "name": "Jump squat", "category": "accessory_explosive", "requires": [], "calisthenic": true, "sets": 4, "reps": "8", "forbiddenInjuries": ["knee", "achilles"] },
-    { "id": "box_jump_low", "name": "Box jump (low box, soft landing)", "category": "accessory_explosive", "requires": [], "calisthenic": true, "sets": 4, "reps": "5", "forbiddenInjuries": ["achilles"] }
+    { "id": "box_jump_low", "name": "Box jump (low box, soft landing)", "category": "accessory_explosive", "requires": [], "calisthenic": true, "sets": 4, "reps": "5", "forbiddenInjuries": ["achilles"] },
+
+    { "id": "ring_row_feet_elevated", "name": "Feet-elevated ring row", "category": "accessory_pull", "requires": ["pullup_bar"], "calisthenic": true, "sets": 4, "reps": "8-12" },
+    { "id": "renegade_row_db", "name": "Renegade row", "category": "accessory_pull", "requires": ["dumbbells"], "calisthenic": false, "sets": 3, "reps": "8/side", "forbiddenInjuries": ["wrist"] },
+    { "id": "kb_high_pull", "name": "Kettlebell high pull", "category": "accessory_pull", "requires": ["kettlebell"], "calisthenic": false, "sets": 4, "reps": "8", "weightDescriptor": "moderate", "forbiddenInjuries": ["shoulder"] },
+
+    { "id": "front_rack_split_squat_db", "name": "Front-rack DB split squat", "category": "accessory_squat_uni", "requires": ["dumbbells"], "calisthenic": false, "sets": 3, "reps": "8/side", "weightDescriptor": "moderate pair", "forbiddenInjuries": ["knee", "wrist"] },
+    { "id": "skater_squat", "name": "Skater squat", "category": "accessory_squat_uni", "requires": [], "calisthenic": true, "sets": 3, "reps": "6/side", "forbiddenInjuries": ["knee"] },
+    { "id": "sled_march", "name": "Sled march", "category": "accessory_squat_uni", "requires": ["sled"], "calisthenic": false, "sets": 3, "reps": "30 yd", "weightDescriptor": "moderate — knee-friendly quad drive" },
+
+    { "id": "nordic_curl_eccentric", "name": "Nordic hamstring curl (eccentric)", "category": "accessory_hinge", "requires": [], "calisthenic": true, "sets": 3, "reps": "5", "forbiddenInjuries": ["knee"] },
+    { "id": "single_leg_hip_thrust_bw", "name": "Single-leg hip thrust", "category": "accessory_hinge", "requires": [], "calisthenic": true, "sets": 3, "reps": "10/side" },
+    { "id": "kb_deadlift", "name": "Kettlebell deadlift", "category": "accessory_hinge", "requires": ["kettlebell"], "calisthenic": false, "sets": 3, "reps": "10", "weightDescriptor": "heavy", "forbiddenInjuries": ["lower_back"] },
+    { "id": "rack_pull", "name": "Rack pull (mid-shin)", "category": "accessory_hinge", "requires": ["barbell", "rack"], "calisthenic": false, "sets": 3, "reps": "5", "weightDescriptor": "heavy — above MDL working weight", "forbiddenInjuries": ["lower_back"] },
+
+    { "id": "deficit_push_up_db", "name": "Deficit push-up (on DBs)", "category": "accessory_push", "requires": ["dumbbells"], "calisthenic": true, "sets": 3, "reps": "10", "forbiddenInjuries": ["shoulder"] },
+    { "id": "pseudo_planche_push_up", "name": "Pseudo-planche push-up", "category": "accessory_push", "requires": [], "calisthenic": true, "sets": 3, "reps": "6", "forbiddenInjuries": ["wrist", "shoulder"] },
+    { "id": "landmine_press", "name": "Landmine press", "category": "accessory_push", "requires": ["barbell"], "calisthenic": false, "sets": 3, "reps": "8/side", "weightDescriptor": "moderate", "forbiddenInjuries": ["shoulder"] },
+    { "id": "db_floor_press", "name": "DB floor press", "category": "accessory_push", "requires": ["dumbbells"], "calisthenic": false, "sets": 3, "reps": "10", "forbiddenInjuries": ["shoulder"] },
+
+    { "id": "hollow_rock", "name": "Hollow rock", "category": "accessory_core", "requires": [], "calisthenic": true, "sets": 3, "reps": "12" },
+    { "id": "l_sit_progression", "name": "L-sit progression", "category": "accessory_core", "requires": [], "calisthenic": true, "sets": 3, "reps": "15s", "forbiddenInjuries": ["wrist"] },
+    { "id": "toes_to_bar", "name": "Toes-to-bar", "category": "accessory_core", "requires": ["pullup_bar"], "calisthenic": true, "sets": 3, "reps": "6", "forbiddenInjuries": ["shoulder"] },
+    { "id": "weighted_situp_db", "name": "Weighted sit-up (DB)", "category": "accessory_core", "requires": ["dumbbells"], "calisthenic": false, "sets": 3, "reps": "12", "forbiddenInjuries": ["lower_back"] },
+
+    { "id": "front_rack_carry_kb", "name": "Front-rack carry (double KB)", "category": "accessory_carry", "requires": ["kettlebell"], "calisthenic": false, "sets": 3, "reps": "40 yd", "weightDescriptor": "moderate pair" },
+    { "id": "sled_drag_forward", "name": "Sled drag (forward)", "category": "accessory_carry", "requires": ["sled"], "calisthenic": false, "sets": 4, "reps": "40 yd", "weightDescriptor": "heavy — SDC specific" },
+    { "id": "sled_drag_backward", "name": "Backward sled drag", "category": "accessory_carry", "requires": ["sled"], "calisthenic": false, "sets": 4, "reps": "40 yd", "weightDescriptor": "moderate — knee-friendly" },
+    { "id": "zercher_carry_bb", "name": "Zercher carry", "category": "accessory_carry", "requires": ["barbell"], "calisthenic": false, "sets": 3, "reps": "30 yd", "weightDescriptor": "heavy", "forbiddenInjuries": ["lower_back"] },
+
+    { "id": "sled_push_sprint", "name": "Sled push sprint", "category": "accessory_explosive", "requires": ["sled"], "calisthenic": false, "sets": 5, "reps": "20 yd", "weightDescriptor": "moderate-heavy — SDC specific" },
+    { "id": "kb_clean", "name": "Kettlebell clean", "category": "accessory_explosive", "requires": ["kettlebell"], "calisthenic": false, "sets": 4, "reps": "6/side", "weightDescriptor": "moderate", "forbiddenInjuries": ["wrist"] },
+    { "id": "skater_bound", "name": "Lateral skater bound", "category": "accessory_explosive", "requires": [], "calisthenic": true, "sets": 4, "reps": "6/side", "forbiddenInjuries": ["knee", "achilles"] },
+    { "id": "tuck_jump", "name": "Tuck jump", "category": "accessory_explosive", "requires": [], "calisthenic": true, "sets": 4, "reps": "6", "forbiddenInjuries": ["knee", "achilles"] }
   ]
 }
