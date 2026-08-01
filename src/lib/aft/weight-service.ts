@@ -9,6 +9,7 @@ export type WeightLogEntry = {
   notes: string | null;
   measurements: {
     waistIn?: number;
+    waistReadings?: number[];
     neckIn?: number;
     hipIn?: number;
     abdomenIn?: number;
@@ -49,6 +50,7 @@ export async function logWeight(args: {
   notes?: string;
   measurements?: {
     waistIn?: number;
+    waistReadings?: number[];
     neckIn?: number;
     hipIn?: number;
     abdomenIn?: number;
@@ -61,8 +63,10 @@ export async function logWeight(args: {
   // Strip empty measurement object → null so we don't store {}
   let measurementsToSave: typeof measurements | null = null;
   if (measurements) {
-    const hasAny = Object.values(measurements).some(
-      (v) => typeof v === "number" && v > 0,
+    const hasAny = Object.values(measurements).some((v) =>
+      Array.isArray(v)
+        ? v.some((n) => typeof n === "number" && n > 0)
+        : typeof v === "number" && v > 0,
     );
     if (hasAny) measurementsToSave = measurements;
   }

@@ -6,6 +6,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -125,8 +126,11 @@ export const profiles = pgTable(
     age: integer("age").notNull(),
     sex: text("sex", { enum: ["MC", "F"] }).notNull(),
     bodyweightLb: integer("bodyweight_lb").notNull(),
-    /** Whole inches. Optional — only required for body-comp calculations. */
-    heightIn: integer("height_in"),
+    /**
+     * Height in inches to the nearest 0.5" (the WHtR measurement precision per
+     * AD 2026-13 / TAPE team guidance). Optional — only required for body-comp.
+     */
+    heightIn: real("height_in"),
     daysPerWeek: integer("days_per_week").notNull(), // 3-6
     equipment: jsonb("equipment").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     injuries: jsonb("injuries").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
@@ -228,10 +232,14 @@ export const weightLogs = pgTable(
     weightLb: integer("weight_lb").notNull(),
     /**
      * Optional body-comp measurements at this weigh-in. All values in inches.
-     * Stored verbatim so we can recompute BF% / WHtR if the formulas change.
+     * Stored verbatim so we can recompute WHtR if the formulas change.
+     * `waistReadings` holds the three (or more) navel measurements per DA 5500;
+     * `waistIn` remains the single/average value for charts and back-compat.
+     * `neckIn`/`hipIn`/`abdomenIn` are legacy tape inputs, no longer collected.
      */
     measurements: jsonb("measurements").$type<{
       waistIn?: number;
+      waistReadings?: number[];
       neckIn?: number;
       hipIn?: number;
       abdomenIn?: number;

@@ -51,7 +51,7 @@ export const PROFILE_FORM_SCHEMA = z.object({
     .or(z.literal("").transform(() => undefined)),
   heightIn: z.coerce
     .number()
-    .int()
+    .multipleOf(0.5, "Height must be to the nearest 0.5 inch")
     .min(48)
     .max(96)
     .optional()
