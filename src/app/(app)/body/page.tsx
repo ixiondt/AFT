@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
@@ -6,15 +5,15 @@ import { db, schema } from "@/lib/db";
 import { loadWeightLog, type WeightLogEntry } from "@/lib/aft/weight-service";
 import {
   ARMY_WHTR_MAX,
-  armyBodyFatMaxPct,
-  tapeBodyFatPct,
-  tapeBodyFatPctMultiSite,
+  truncateWhtR3,
   whtR,
   whtRArmyPass,
   whtRBand,
   whtRBandLabel,
 } from "@/lib/aft/body-comp";
+import { evaluationEntry } from "@/lib/aft/abcp-paperwork";
 import { Callout } from "@/components/ui";
+import { CopyButton } from "./copy-button";
 import { logBodyMetricsAction, setHeightAction } from "./actions";
 
 const BAND_COLOR: Record<string, string> = {
@@ -23,6 +22,14 @@ const BAND_COLOR: Record<string, string> = {
   high: "oklch(0.6 0.18 35)",
   very_high: "var(--color-danger)",
 };
+
+/** The recorded standard, shown to three decimals ("0.550"). */
+const STANDARD = ARMY_WHTR_MAX.toFixed(3);
+
+/** Waist logged at the navel — falls back to the legacy abdomen field. */
+function waistOf(m: WeightLogEntry["measurements"]): number | undefined {
+  return m?.waistIn ?? m?.abdomenIn;
+}
 
 export default async function BodyPage() {
   const session = await auth();
@@ -34,6 +41,11 @@ export default async function BodyPage() {
   const log = await loadWeightLog({ userId: session.user.id });
   const latest = log[log.length - 1];
 
+  const heightIn = profile?.heightIn ?? 0;
+  const latestRatio = whtR(waistOf(latest?.measurements ?? null), heightIn);
+  const latestWhtr = latestRatio !== null ? truncateWhtR3(latestRatio) : null;
+  const latestPass = latestRatio !== null ? whtRArmyPass(latestRatio) : null;
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <header className="border-b border-[var(--color-line)] pb-4">
@@ -42,17 +54,19 @@ export default async function BodyPage() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight">Height &amp; Weight</h1>
         <p className="mt-1 text-xs text-[var(--color-ink-3)]">
-          Waist-to-Height Ratio (WHtR) is the Army body-composition standard.
-          Weight and legacy tape body-fat % are tracked for reference.
+          Waist-to-Height Ratio (WHtR) is the Army&rsquo;s sole body-composition
+          standard. Weight is tracked for your own reference.
         </p>
       </header>
 
-      <Callout tone="info" title="WHtR is now the only standard" className="mt-5">
-        Per the Jan 2026 directive, a waist-to-height ratio{" "}
-        <span className="font-mono">&lt; {ARMY_WHTR_MAX}</span> is the sole
-        authorized body-composition test. There is no tape / DXA / InBody
-        appeal, and no AFT-score (465+) exemption — the tape body-fat % below is
-        kept for reference and historical worksheets only.
+      <Callout tone="info" title="WHtR is the only standard" className="mt-5">
+        Per Army Directive 2026-13 (effective 1 Jul 2026), a waist-to-height ratio{" "}
+        <span className="font-mono">&lt; {STANDARD}</span> is the sole authorized
+        body-composition test. Height/weight tables and the tape body-fat test
+        are discontinued — no tape / DXA / InBody appeal and no AFT-score
+        exemption. Measured at least twice a year; a ratio of{" "}
+        <span className="font-mono">{STANDARD}</span> or greater flags the Soldier
+        (flag code K) and enrolls them in the ABCP.
       </Callout>
 
       {!profile?.heightIn ? (
@@ -60,40 +74,32 @@ export default async function BodyPage() {
       ) : (
         <>
           <HeightEditor currentHeight={profile.heightIn} />
-          <CurrentSummary
-            profile={profile}
-            latest={latest ?? null}
-          />
+          <CurrentSummary profile={profile} latest={latest ?? null} />
         </>
       )}
 
-      {profile?.heightIn && (
-        <LogForm
-          latest={latest ?? null}
-          sex={profile.sex}
-        />
-      )}
+      {profile?.heightIn && <LogForm latest={latest ?? null} />}
 
-      {profile?.heightIn && latest && (
-        <ExportSection sex={profile.sex} />
+      {profile?.heightIn && latest && <ExportSection />}
+
+      {profile?.heightIn && (
+        <PaperworkSection whtr={latestWhtr} compliant={latestPass} />
       )}
 
       <History log={log} profile={profile ?? null} />
 
       <footer className="mt-12 border-t border-[var(--color-line)] pt-4 text-xs text-[var(--color-ink-3)]">
-        WHtR (waist ÷ height) is the sole Army body-composition standard —
-        pass is <span className="font-mono">&lt; {ARMY_WHTR_MAX}</span>. The tape
-        body-fat % is the legacy single-site formula (ALARACT 053/2024), kept
-        for reference and DA 5500/5501 worksheets only:
-        <br />
-        Male: <span className="font-mono">%BF = -26.97 - 0.12·weight + 1.99·abdomen</span>
-        <br />
-        Female: <span className="font-mono">%BF = -9.15 - 0.015·weight + 1.27·abdomen</span>
-        <br />
-        Height isn't in the BF% formula — only WHtR uses it. The finer WHtR
-        health-risk bands are WHO / NIH (PMC5118501), separate from the 0.55
-        pass line. If you log neck (and hip, for women), the history table also
-        surfaces the legacy Hodgdon-Beckett multi-site number for comparison.
+        WHtR = average waist ÷ height, both in inches. Waist is measured at the
+        navel three times, each rounded <em>down</em> to the nearest 0.5&Prime;;
+        height is rounded to the nearest 0.5&Prime;. The recorded ratio is{" "}
+        <em>truncated</em> to three decimals (digits past the third are dropped,
+        not rounded): <span className="font-mono">0.549888 → 0.549</span>.{" "}
+        <span className="font-mono">&lt; {STANDARD}</span> passes;{" "}
+        <span className="font-mono">≥ {STANDARD}</span> fails. If the initial
+        ratio is <span className="font-mono">≥ {STANDARD}</span>, a confirmation
+        measurement by a different team is taken the same duty day before any
+        command action. The finer WHtR health-risk bands are WHO / NIH
+        (PMC5118501) context, separate from the {STANDARD} pass line.
       </footer>
     </main>
   );
@@ -106,7 +112,7 @@ function HeightEditor({ currentHeight }: { currentHeight: number }) {
         <span>
           Height:{" "}
           <span className="font-mono text-sm text-[var(--color-ink)]">
-            {currentHeight}″
+            {currentHeight}&Prime;
           </span>
         </span>
         <span className="text-[10px] uppercase tracking-wider text-[var(--color-accent)]">
@@ -126,6 +132,7 @@ function HeightEditor({ currentHeight }: { currentHeight: number }) {
             name="heightIn"
             min={48}
             max={96}
+            step={0.5}
             required
             defaultValue={currentHeight}
             className="mt-0.5 block w-24 rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
@@ -138,7 +145,7 @@ function HeightEditor({ currentHeight }: { currentHeight: number }) {
           Save
         </button>
         <p className="ml-auto text-[10px] text-[var(--color-ink-3)]">
-          Used for WHtR + BF% calculations.
+          Used for the WHtR calculation.
         </p>
       </form>
     </details>
@@ -149,10 +156,10 @@ function HeightSetup() {
   return (
     <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-5">
       <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-        First, what's your height?
+        First, what&rsquo;s your height?
       </h2>
       <p className="mt-1 text-xs text-[var(--color-ink-3)]">
-        Required to compute WHtR and tape-test body fat %.
+        Required to compute your WHtR.
       </p>
       <form action={setHeightAction} className="mt-3 flex flex-wrap items-end gap-2">
         <label className="block">
@@ -164,6 +171,7 @@ function HeightSetup() {
             name="heightIn"
             min={48}
             max={96}
+            step={0.5}
             required
             autoFocus
             placeholder="70"
@@ -189,25 +197,13 @@ function CurrentSummary({
   latest: WeightLogEntry | null;
 }) {
   const heightIn = profile.heightIn ?? 0;
-  // WHtR waist is measured at the navel — the same site as the Army's
-  // abdominal circumference — so fall back to abdomen when waist isn't logged
-  // separately. Applies to both sexes now that WHtR is the sole standard.
-  const waistOrAbdomen =
-    latest?.measurements?.waistIn ?? latest?.measurements?.abdomenIn;
-  const ratio = whtR(waistOrAbdomen, heightIn);
+  const ratio = whtR(waistOf(latest?.measurements ?? null), heightIn);
   const band = ratio !== null ? whtRBand(ratio) : null;
   const armyPass = ratio !== null ? whtRArmyPass(ratio) : null;
-  const bf = latest
-    ? tapeBodyFatPct({
-        sex: profile.sex,
-        weightLb: latest.weightLb,
-        measurements: latest.measurements ?? {},
-      })
-    : null;
-  const bfMax = armyBodyFatMaxPct(profile.age, profile.sex);
+  const recorded = ratio !== null ? truncateWhtR3(ratio).toFixed(3) : null;
 
   return (
-    <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <section className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Card title="Weight">
         {latest ? (
           <div className="font-mono text-3xl font-bold text-[var(--color-ink)]">
@@ -218,12 +214,12 @@ function CurrentSummary({
           <NoData />
         )}
         <p className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-          Height {heightIn || "—"}″
+          Height {heightIn || "—"}&Prime;
         </p>
       </Card>
 
       <Card title="WHtR — Army standard">
-        {ratio !== null && band !== null && armyPass !== null ? (
+        {recorded !== null && band !== null && armyPass !== null ? (
           <>
             <div
               className="font-mono text-3xl font-bold"
@@ -231,7 +227,7 @@ function CurrentSummary({
                 color: armyPass ? "var(--color-accent)" : "var(--color-danger)",
               }}
             >
-              {ratio.toFixed(2)}
+              {recorded}
             </div>
             <p
               className="mt-1 text-[10px] font-semibold uppercase tracking-wider"
@@ -242,7 +238,8 @@ function CurrentSummary({
               {armyPass ? "Pass" : "Fail — flag / ABCP"}
             </p>
             <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
-              Army standard &lt; {ARMY_WHTR_MAX}
+              Army standard &lt; {STANDARD}
+              {!armyPass && " · confirm same day (different team)"}
             </p>
             <p className="text-[10px]" style={{ color: BAND_COLOR[band] }}>
               {whtRBandLabel(band)} (health)
@@ -252,30 +249,7 @@ function CurrentSummary({
           <>
             <NoData />
             <p className="mt-1 text-[10px] text-[var(--color-ink-3)]">
-              Log waist at navel
-            </p>
-          </>
-        )}
-      </Card>
-
-      <Card title="Body fat % — legacy">
-        {bf !== null ? (
-          <>
-            <div className="font-mono text-3xl font-bold text-[var(--color-ink-2)]">
-              {bf}%
-            </div>
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-              Ref only · old max {bfMax}% (age {profile.age}, {profile.sex})
-            </p>
-            <p className="mt-0.5 text-[10px] text-[var(--color-ink-3)]">
-              Tape test — no longer a standard
-            </p>
-          </>
-        ) : (
-          <>
-            <NoData />
-            <p className="mt-1 text-[10px] text-[var(--color-ink-3)]">
-              Log abdomen at navel
+              Log waist at the navel
             </p>
           </>
         )}
@@ -301,25 +275,22 @@ function NoData() {
   );
 }
 
-function LogForm({
-  latest,
-  sex,
-}: {
-  latest: WeightLogEntry | null;
-  sex: "MC" | "F";
-}) {
+function LogForm({ latest }: { latest: WeightLogEntry | null }) {
   const prefill = latest?.measurements ?? {};
+  const readings = prefill.waistReadings ?? [];
+  const singleWaist = waistOf(prefill);
 
   return (
     <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-5">
       <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-        Log today's numbers
+        Log today&rsquo;s numbers
       </h2>
       <p className="mt-1 text-xs text-[var(--color-ink-3)]">
-        Fill what you measured. Earlier values are pre-filled.
+        Waist is measured at the navel three times (each rounded down to the
+        nearest 0.5&Prime;). Earlier values are pre-filled.
       </p>
       <form action={logBodyMetricsAction} className="mt-3 space-y-3">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field
             name="weightLb"
             label="Weight (lb)"
@@ -329,49 +300,31 @@ function LogForm({
             required
           />
           <Field
-            name="abdomenIn"
-            label="Waist at navel (in)"
-            defaultValue={prefill.abdomenIn}
-            step={0.1}
+            name="waist1"
+            label="Waist #1 (in)"
+            defaultValue={readings[0] ?? singleWaist}
+            step={0.5}
             min={20}
             max={70}
-            hint="Drives WHtR — the Army standard"
+            hint="At the navel"
+          />
+          <Field
+            name="waist2"
+            label="Waist #2 (in)"
+            defaultValue={readings[1]}
+            step={0.5}
+            min={20}
+            max={70}
+          />
+          <Field
+            name="waist3"
+            label="Waist #3 (in)"
+            defaultValue={readings[2]}
+            step={0.5}
+            min={20}
+            max={70}
           />
         </div>
-        <details className="text-xs text-[var(--color-ink-3)]">
-          <summary className="cursor-pointer hover:text-[var(--color-ink-2)]">
-            Optional: log waist {sex === "F" ? "+ hip + neck" : "+ neck"} for the
-            legacy multi-site number
-          </summary>
-          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Field
-              name="waistIn"
-              label="Waist (in)"
-              defaultValue={prefill.waistIn}
-              step={0.1}
-              min={20}
-              max={70}
-            />
-            <Field
-              name="neckIn"
-              label="Neck (in)"
-              defaultValue={prefill.neckIn}
-              step={0.1}
-              min={10}
-              max={25}
-            />
-            {sex === "F" && (
-              <Field
-                name="hipIn"
-                label="Hip (in)"
-                defaultValue={prefill.hipIn}
-                step={0.1}
-                min={25}
-                max={80}
-              />
-            )}
-          </div>
-        </details>
         <label className="block">
           <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
             Notes (optional)
@@ -438,73 +391,165 @@ function Field({
   );
 }
 
-function ExportSection({ sex }: { sex: "MC" | "F" }) {
-  const formName = sex === "MC" ? "DA 5500" : "DA 5501";
+function ExportSection() {
   return (
     <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-[var(--color-ink)]">
-            Export Army Body Fat Worksheet ({formName})
-          </h2>
-          <p className="mt-1 text-xs text-[var(--color-ink-3)]">
-            Generates the official {formName} pre-filled with your most recent
-            log + the legacy single-site tape calculation. WHtR is the current
-            standard; use this only if your unit still requires the worksheet.
-          </p>
-        </div>
+      <div>
+        <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+          Export DA Form 5500 (Jul 2026)
+        </h2>
+        <p className="mt-1 text-xs text-[var(--color-ink-3)]">
+          Generates the official Army Body Composition Screening and Assessment
+          Worksheet pre-filled with your most recent WHtR measurement. DA 5501 is
+          rescinded — one form for all Soldiers.
+        </p>
       </div>
       <form
         action="/api/body/da-form"
         method="GET"
-        className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]"
+        className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"
       >
-        <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-            Rank (optional)
-          </span>
-          <input
-            type="text"
-            name="rank"
-            maxLength={10}
-            placeholder="SGT"
-            className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-            Prepared by (optional)
-          </span>
-          <input
-            type="text"
-            name="prepared_by"
-            maxLength={60}
-            placeholder="LAST, FIRST"
-            className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
-            Preparer rank
-          </span>
-          <input
-            type="text"
-            name="prepared_by_rank"
-            maxLength={10}
-            placeholder="SFC"
-            className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
-          />
-        </label>
-        <div className="flex items-end">
+        <TextInput name="rank" label="Rank (optional)" placeholder="SGT" maxLength={10} />
+        <TextInput name="remarks" label="Remarks (optional)" placeholder="…" maxLength={120} />
+        <TextInput name="prepared_by" label="Prepared by (optional)" placeholder="LAST, FIRST" maxLength={60} />
+        <TextInput name="prepared_by_rank" label="Preparer rank" placeholder="SFC" maxLength={10} />
+        <TextInput name="approved_by" label="Approved by (optional)" placeholder="LAST, FIRST" maxLength={60} />
+        <TextInput name="approved_by_rank" label="Approver rank" placeholder="MAJ" maxLength={10} />
+        <div className="sm:col-span-2">
           <button
             type="submit"
             className="rounded-lg bg-[var(--color-accent)] px-4 py-2 text-sm font-medium text-[var(--color-accent-fg)] hover:opacity-90"
           >
-            Download {formName}
+            Download DA 5500
           </button>
         </div>
       </form>
     </section>
+  );
+}
+
+function TextInput({
+  name,
+  label,
+  placeholder,
+  maxLength,
+}: {
+  name: string;
+  label: string;
+  placeholder?: string;
+  maxLength?: number;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+        {label}
+      </span>
+      <input
+        type="text"
+        name={name}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        className="mt-0.5 block w-full rounded-md border border-[var(--color-line)] bg-white px-3 py-2 text-sm shadow-sm focus:border-[var(--color-accent)] focus:outline-none"
+      />
+    </label>
+  );
+}
+
+function PaperworkSection({
+  whtr,
+  compliant,
+}: {
+  whtr: number | null;
+  compliant: boolean | null;
+}) {
+  return (
+    <section className="mt-6 rounded-lg border border-[var(--color-line)] bg-white p-5">
+      <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+        ABCP enrollment paperwork
+      </h2>
+      <p className="mt-1 text-xs text-[var(--color-ink-3)]">
+        A Soldier with a WHtR of {STANDARD} or greater is flagged (code K) and
+        enrolled in the ABCP. Generate the counseling, acknowledgement, and
+        medical-evaluation memos below — blank fields print as placeholders you
+        fill in and sign.
+      </p>
+
+      <EvaluationEntryBlock whtr={whtr} compliant={compliant} />
+
+      <details className="mt-4 rounded-md border border-[var(--color-line)] bg-[var(--color-bg-2)]">
+        <summary className="cursor-pointer px-4 py-2 text-xs text-[var(--color-ink-2)] hover:text-[var(--color-ink)]">
+          Enrollment memos (counseling · acknowledgement · medical request)
+        </summary>
+        <form method="GET" className="border-t border-[var(--color-line)] p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <TextInput name="office_symbol" label="Office symbol" placeholder="ABC-DE-F" maxLength={40} />
+            <TextInput name="unit" label="Unit" placeholder="HHD, 1-1 IN" maxLength={80} />
+            <TextInput name="org_name" label="Organization" placeholder="1st Battalion, 1st Infantry" maxLength={80} />
+            <TextInput name="org_address" label="Street address" placeholder="1 Army Way" maxLength={80} />
+            <TextInput name="org_city_state_zip" label="City, State ZIP" placeholder="Fort X, ST 00000" maxLength={80} />
+            <TextInput name="soldier_rank" label="Soldier rank" placeholder="SGT" maxLength={10} />
+            <TextInput name="soldier_branch" label="Soldier branch" placeholder="IN / USA" maxLength={10} />
+            <TextInput name="dodid" label="DODID (medical)" placeholder="0000000000" maxLength={12} />
+            <TextInput name="commander_name" label="Commander name" placeholder="LAST, FIRST" maxLength={60} />
+            <TextInput name="commander_rank" label="Commander rank, branch" placeholder="MAJ, MI" maxLength={30} />
+            <TextInput name="commander_title" label="Commander title" placeholder="Commanding" maxLength={40} />
+            <TextInput name="poc_name" label="POC name (medical)" placeholder="SFC LAST, FIRST" maxLength={60} />
+            <TextInput name="poc_email" label="POC email (medical)" placeholder="name@army.mil" maxLength={80} />
+            <TextInput name="poc_phone" label="POC phone (medical)" placeholder="000-000-0000" maxLength={20} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <MemoButton type="counseling" label="Commander's counseling" />
+            <MemoButton type="acknowledgement" label="Soldier's acknowledgement" />
+            <MemoButton type="medical" label="Medical eval request" />
+          </div>
+        </form>
+      </details>
+    </section>
+  );
+}
+
+function MemoButton({ type, label }: { type: string; label: string }) {
+  return (
+    <button
+      type="submit"
+      formAction={`/api/body/memo/${type}`}
+      className="rounded-lg border border-[var(--color-accent)] px-3 py-2 text-xs font-medium text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-[var(--color-accent-fg)]"
+    >
+      {label}
+    </button>
+  );
+}
+
+function EvaluationEntryBlock({
+  whtr,
+  compliant,
+}: {
+  whtr: number | null;
+  compliant: boolean | null;
+}) {
+  const entry = evaluationEntry({ whtr, compliant });
+  const block = `HEIGHT: ${entry.height}   WEIGHT: ${entry.weight}   AR 600-9: ${entry.compliance}\n${entry.comment}`;
+
+  return (
+    <div className="mt-4 rounded-md border border-[var(--color-line)] bg-[var(--color-bg-2)] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-3)]">
+          OER / NCOER / AER entry (Annex B)
+        </p>
+        <CopyButton text={block} />
+      </div>
+      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-[11px] text-[var(--color-ink)]">
+        {block}
+      </pre>
+      <p className="mt-2 text-[10px] text-[var(--color-ink-3)]">
+        Enter <span className="font-mono">99</span> for height and{" "}
+        <span className="font-mono">999</span> for weight in Part IV, select{" "}
+        <span className="font-mono">{entry.compliance}</span> for AR 600-9
+        compliance, and add the WHtR comment. A medical condition may be cited
+        for a &ldquo;NO&rdquo; but does not change the entry — WHtR waivers are
+        not permitted for evaluations.
+      </p>
+    </div>
   );
 }
 
@@ -517,7 +562,6 @@ function History({
 }) {
   if (!log.length) return null;
   const sorted = [...log].reverse();
-  const isMale = profile?.sex === "MC";
 
   return (
     <section className="mt-8">
@@ -525,56 +569,49 @@ function History({
         History
       </h2>
       <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--color-line)] bg-white">
-        <table className="w-full min-w-[480px] text-[11px]">
+        <table className="w-full min-w-[420px] text-[11px]">
           <thead className="border-b border-[var(--color-line)] text-left text-[var(--color-ink-3)]">
             <tr>
               <th className="px-3 py-2 font-normal">Date</th>
               <th className="px-3 py-2 font-normal">Weight</th>
               <th className="px-3 py-2 font-normal">Waist</th>
               <th className="px-3 py-2 font-normal">WHtR</th>
-              <th className="px-3 py-2 font-normal">BF % (ref)</th>
-              {isMale && <th className="px-3 py-2 font-normal">BF % (multi-site)</th>}
+              <th className="px-3 py-2 font-normal">Standard</th>
               <th className="px-3 py-2 font-normal">Note</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map((e) => {
               const heightIn = profile?.heightIn ?? 0;
-              const waistOrAbdomen =
-                e.measurements?.waistIn ?? e.measurements?.abdomenIn;
-              const ratio = whtR(waistOrAbdomen, heightIn);
-              const bf = profile
-                ? tapeBodyFatPct({
-                    sex: profile.sex,
-                    weightLb: e.weightLb,
-                    measurements: e.measurements ?? {},
-                  })
-                : null;
-              const bfLegacy = profile
-                ? tapeBodyFatPctMultiSite({
-                    sex: profile.sex,
-                    heightIn,
-                    measurements: e.measurements ?? {},
-                  })
-                : null;
+              const waist = waistOf(e.measurements);
+              const ratio = whtR(waist, heightIn);
+              const recorded = ratio !== null ? truncateWhtR3(ratio) : null;
+              const pass = ratio !== null ? whtRArmyPass(ratio) : null;
               return (
                 <tr key={e.id} className="border-b border-[var(--color-line)] last:border-0">
                   <td className="px-3 py-1.5 font-mono">
                     {new Date(e.recordedAt).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-1.5 font-mono">{e.weightLb}</td>
-                  <td className="px-3 py-1.5 font-mono">{waistOrAbdomen ?? "—"}</td>
                   <td className="px-3 py-1.5 font-mono">
-                    {ratio !== null ? ratio.toFixed(2) : "—"}
+                    {waist !== undefined ? waist.toFixed(1) : "—"}
                   </td>
                   <td className="px-3 py-1.5 font-mono">
-                    {bf !== null ? `${bf}%` : "—"}
+                    {recorded !== null ? recorded.toFixed(3) : "—"}
                   </td>
-                  {isMale && (
-                    <td className="px-3 py-1.5 font-mono text-[var(--color-ink-3)]">
-                      {bfLegacy !== null ? `${bfLegacy}%` : "—"}
-                    </td>
-                  )}
+                  <td
+                    className="px-3 py-1.5 font-mono"
+                    style={{
+                      color:
+                        pass === null
+                          ? undefined
+                          : pass
+                            ? "var(--color-accent)"
+                            : "var(--color-danger)",
+                    }}
+                  >
+                    {pass === null ? "—" : pass ? "Pass" : "Fail"}
+                  </td>
                   <td className="px-3 py-1.5 text-[var(--color-ink-3)]">{e.notes ?? ""}</td>
                 </tr>
               );
