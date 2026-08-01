@@ -1,34 +1,35 @@
 /**
  * Body composition helpers.
  *
- * **Policy note (Jan 2026 directive):** Waist-to-Height Ratio (WHtR) is now the
- * *sole* authorized Army body-composition standard. A ratio **< 0.55 passes**;
- * ≥ 0.55 flags the Soldier into the Army Body Composition Program. The tape
- * test, DXA / InBody / Bod Pod appeals, and the AFT high-scorer (465+) body-fat
- * exemption (Army Directive 2025-17) are all **removed** — WHtR is the only
- * measurement, and the only way out of a failing ratio is to change the ratio.
+ * **Policy (Army Directive 2026-13, effective 1 Jul 2026):** the
+ * Waist-to-Height Ratio (WHtR) is the *sole* authorized Army body-composition
+ * standard. Height/weight screening tables are discontinued and the
+ * circumference (tape) body-fat test is abolished — no tape/DXA/InBody appeal,
+ * and no AFT high-scorer exemption (AD 2025-17 rescinded).
  *
- * - **WHtR** (Waist-to-Height Ratio): waist ÷ height. Army pass/fail line is
- *   0.55 (see `ARMY_WHTR_MAX` / `whtRArmyPass`). The finer `whtRBand` values
- *   (healthy < 0.5, etc.) are WHO 2008 / 2024 NIH (PMC5118501) *health-risk*
- *   context, NOT the compliance test.
- * - **Army body fat % (LEGACY / reference only)** — single-site tape
- *   (ALARACT 053/2024). No longer a compliance standard; retained for units
- *   still transitioning and for historical worksheets (DA 5500/5501):
- *     Male:   %BF = -26.97 - 0.12·weight_lb + 1.99·abdomen_in
- *     Female: %BF =  -9.15 - 0.015·weight_lb + 1.27·abdomen_in
- * - **Legacy multi-site (Hodgdon-Beckett)** — pre-2024 method; exposed via
- *   tapeBodyFatPctMultiSite() for comparison only.
+ * Compliance rule:
+ * - WHtR = average waist (in) ÷ height (in). Waist is measured at the navel and
+ *   rounded *down* to the nearest 0.5" (`roundDownHalfInch`); height is rounded
+ *   to the nearest 0.5" (`roundNearestHalfInch`). Waist is measured three times
+ *   and averaged (`averageWaist`).
+ * - The recorded WHtR is **truncated** to three decimals — digits past the
+ *   third are disregarded, NOT rounded (`truncateWhtR3`): 0.549888 → 0.549.
+ * - **< 0.550 passes; ≥ 0.550 fails** (see `ARMY_WHTR_MAX` / `whtRArmyPass`).
+ *   A failing ratio flags the Soldier (flag code K) into the Army Body
+ *   Composition Program (ABCP). WHtR is recorded on DA Form 5500 (Jul 2026) and
+ *   in ATIS; DA Form 5501 is rescinded.
+ * - Measured at least twice per calendar year. If the initial WHtR is ≥ 0.550,
+ *   a confirmation measurement by a different team is taken the same duty day
+ *   before any command action.
+ *
+ * The finer `whtRBand` values (healthy < 0.5, etc.) are WHO 2008 / 2024 NIH
+ * (PMC5118501) *health-risk* context, NOT the compliance test.
+ *
+ * The retired circumference (tape) body-fat method and its age/sex ceilings
+ * (AR 600-9) have been removed entirely — they no longer gate compliance.
  */
 
 export type Sex = "MC" | "F";
-
-export type Measurements = {
-  waistIn?: number;
-  neckIn?: number;
-  hipIn?: number;
-  abdomenIn?: number;
-};
 
 export type WhtRBand = "healthy" | "increased" | "high" | "very_high";
 
@@ -58,94 +59,75 @@ export function whtRBandLabel(band: WhtRBand): string {
 }
 
 /**
- * The Army body-composition compliance threshold (waist ÷ height), per the
- * Jan 2026 directive. `ratio < 0.55` passes; `ratio >= 0.55` triggers a flag
- * and enrollment in the Army Body Composition Program. This is the *only*
- * authorized standard — no tape/DXA appeal, no AFT-score exemption.
+ * The Army body-composition compliance threshold (waist ÷ height), per Army
+ * Directive 2026-13. The *recorded* (3-decimal, truncated) WHtR must be
+ * **< 0.550** to pass; **≥ 0.550** triggers a flag (code K) and enrollment in
+ * the Army Body Composition Program. This is the *only* authorized standard —
+ * no tape/DXA appeal, no AFT-score exemption.
  */
 export const ARMY_WHTR_MAX = 0.55;
 
-/** True when the WHtR meets the Army standard (strictly below 0.55). */
+/**
+ * Truncate a WHtR to three decimals per DA Form 5500 rules: digits past the
+ * third decimal are disregarded (NOT rounded). 0.549888 → 0.549, 0.5501 → 0.550.
+ * The `1e-9` nudge absorbs binary-float dust so an exact boundary such as
+ * 33/60 = 0.550 truncates to 0.550, not 0.549.
+ */
+export function truncateWhtR3(ratio: number): number {
+  if (!Number.isFinite(ratio)) return ratio;
+  return Math.floor(ratio * 1000 + 1e-9) / 1000;
+}
+
+/**
+ * True when the WHtR meets the Army standard. Applies the DA 5500 truncation
+ * first, then the strict "< 0.550" test, so it matches the value a Soldier
+ * would actually see recorded on the worksheet.
+ */
 export function whtRArmyPass(ratio: number): boolean {
-  return ratio < ARMY_WHTR_MAX;
+  return truncateWhtR3(ratio) < ARMY_WHTR_MAX;
+}
+
+/** Round *down* to the nearest 0.5" — the waist-measurement rule (TAPE guidance). */
+export function roundDownHalfInch(inches: number): number {
+  return Math.floor(inches * 2) / 2;
+}
+
+/** Round to the *nearest* 0.5" — the height-measurement rule (TAPE guidance). */
+export function roundNearestHalfInch(inches: number): number {
+  return Math.round(inches * 2) / 2;
 }
 
 /**
- * Body fat % using the current Army single-site standard
- * (ALARACT 053/2024, effective 9 Jun 2024). Both sexes use the same shape:
- * a regression on bodyweight (lb) + abdominal circumference at the navel (in).
- * Height and age are NOT inputs to the formula itself.
- *
- * Returns null if either weight or abdomen is missing.
+ * Average the waist measurements per DA Form 5500 / TAPE team guidance: three
+ * readings, each already rounded down to the nearest 0.5". If more than three
+ * are supplied (a Soldier whose spread exceeded 1" and was re-measured), the
+ * three closest readings are averaged. Result is rounded to three decimals for
+ * the worksheet's "average" cell. Returns null with fewer than three valid
+ * readings.
  */
-export function tapeBodyFatPct(args: {
-  sex: Sex;
-  weightLb: number | undefined;
-  measurements: Measurements;
-}): number | null {
-  const { sex, weightLb, measurements } = args;
-  if (!weightLb || weightLb <= 0) return null;
-  const abdomen = measurements.abdomenIn ?? measurements.waistIn;
-  if (!abdomen || abdomen <= 0) return null;
+export function averageWaist(readings: Array<number | undefined | null>): number | null {
+  const vals = readings.filter((v): v is number => typeof v === "number" && v > 0);
+  if (vals.length < 3) return null;
 
-  const bf =
-    sex === "MC"
-      ? -26.97 - 0.12 * weightLb + 1.99 * abdomen
-      : -9.15 - 0.015 * weightLb + 1.27 * abdomen;
-
-  return roundOne(Math.max(0, Math.min(60, bf)));
-}
-
-/**
- * Legacy multi-site tape formula (Hodgdon-Beckett). Useful for comparison
- * against the new single-site number while Guard units transition.
- */
-export function tapeBodyFatPctMultiSite(args: {
-  sex: Sex;
-  heightIn: number | undefined;
-  measurements: Measurements;
-}): number | null {
-  const { sex, heightIn, measurements } = args;
-  if (!heightIn || heightIn <= 0) return null;
-  const m = measurements;
-  if (sex === "MC") {
-    const abdomen = m.abdomenIn ?? m.waistIn;
-    const neck = m.neckIn;
-    if (!abdomen || !neck || abdomen <= neck) return null;
-    const bf =
-      86.01 * Math.log10(abdomen - neck) -
-      70.041 * Math.log10(heightIn) +
-      36.76;
-    return roundOne(Math.max(0, Math.min(60, bf)));
+  let chosen: number[];
+  if (vals.length === 3) {
+    chosen = vals;
+  } else {
+    // Slide a window of 3 over the sorted readings; keep the tightest cluster.
+    const sorted = [...vals].sort((a, b) => a - b);
+    let best = sorted.slice(0, 3);
+    let bestRange = Math.max(...best) - Math.min(...best);
+    for (let i = 1; i + 3 <= sorted.length; i++) {
+      const window = sorted.slice(i, i + 3);
+      const range = Math.max(...window) - Math.min(...window);
+      if (range < bestRange) {
+        best = window;
+        bestRange = range;
+      }
+    }
+    chosen = best;
   }
-  const waist = m.waistIn;
-  const hip = m.hipIn;
-  const neck = m.neckIn;
-  if (!waist || !hip || !neck || waist + hip <= neck) return null;
-  const bf =
-    163.205 * Math.log10(waist + hip - neck) -
-    97.684 * Math.log10(heightIn) -
-    78.387;
-  return roundOne(Math.max(0, Math.min(60, bf)));
-}
 
-function roundOne(n: number): number {
-  return Math.round(n * 10) / 10;
-}
-
-/**
- * Army age-/sex-based body fat % standard (AR 600-9).
- * Returns the maximum allowable BF% for the given age and sex.
- */
-export function armyBodyFatMaxPct(age: number, sex: Sex): number {
-  if (sex === "MC") {
-    if (age <= 20) return 20;
-    if (age <= 27) return 22;
-    if (age <= 39) return 24;
-    return 26;
-  }
-  if (age <= 20) return 30;
-  if (age <= 27) return 32;
-  if (age <= 39) return 34;
-  return 36;
+  const mean = chosen.reduce((sum, v) => sum + v, 0) / chosen.length;
+  return Math.round(mean * 1000) / 1000;
 }
