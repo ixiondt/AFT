@@ -7,6 +7,11 @@ import { auth } from "@/lib/auth";
 import { db, schema } from "@/lib/db";
 import { loadActivePlan } from "@/lib/aft/plan-service";
 import { logWeight } from "@/lib/aft/weight-service";
+import {
+  averageWaist,
+  roundDownHalfInch,
+  roundNearestHalfInch,
+} from "@/lib/aft/body-comp";
 import { setFlash } from "@/lib/flash";
 
 function parseInches(value: FormDataEntryValue | null): number | undefined {
@@ -31,7 +36,7 @@ export async function setHeightAction(formData: FormData): Promise<void> {
 
   await db
     .update(schema.profiles)
-    .set({ heightIn: Math.round(n), updatedAt: new Date() })
+    .set({ heightIn: roundNearestHalfInch(n), updatedAt: new Date() })
     .where(eq(schema.profiles.userId, session.user.id));
 
   await setFlash("Height saved");
@@ -52,12 +57,25 @@ export async function logBodyMetricsAction(formData: FormData): Promise<void> {
     return;
   }
 
-  const measurements = {
-    waistIn: parseInches(formData.get("waistIn")),
-    neckIn: parseInches(formData.get("neckIn")),
-    hipIn: parseInches(formData.get("hipIn")),
-    abdomenIn: parseInches(formData.get("abdomenIn")),
-  };
+  // Waist is measured at the navel three times, each rounded DOWN to the
+  // nearest 0.5" (TAPE team guidance / DA 5500). We store the individual
+  // readings plus the average so the DA 5500 export and WHtR can be recomputed.
+  const readings = [1, 2, 3]
+    .map((i) => parseInches(formData.get(`waist${i}`)))
+    .filter((n): n is number => typeof n === "number")
+    .map(roundDownHalfInch);
+
+  let measurements:
+    | { waistIn?: number; waistReadings?: number[] }
+    | undefined;
+  if (readings.length >= 3) {
+    const avg = averageWaist(readings);
+    measurements = { waistReadings: readings, waistIn: avg ?? readings[0] };
+  } else if (readings.length >= 1) {
+    // 1–2 readings: keep the mean as the single waist value (no DA average yet).
+    const mean = readings.reduce((s, v) => s + v, 0) / readings.length;
+    measurements = { waistIn: Math.round(mean * 1000) / 1000 };
+  }
 
   const notes = String(formData.get("notes") ?? "").trim();
 
