@@ -234,7 +234,8 @@ export function ProfileForm({
             defaultValue={iv.heightIn}
             min={48}
             max={96}
-            hint="Needed for body comp tab"
+            step={0.5}
+            hint="Needed for body comp tab (nearest 0.5 in)"
           />
         </Row>
         {validAge && (
@@ -792,6 +793,7 @@ function NumberInput(props: {
   placeholder?: string;
   min?: number;
   max?: number;
+  step?: number;
   required?: boolean;
   hint?: string;
   onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -808,6 +810,7 @@ function NumberInput(props: {
         placeholder={props.placeholder}
         min={props.min}
         max={props.max}
+        step={props.step}
         required={props.required}
         onChange={props.onChange}
         autoFocus={props.autoFocus}
