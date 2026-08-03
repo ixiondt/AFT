@@ -154,6 +154,10 @@ export const medicalProfiles = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     /** Nullable: a roster-entry profile (Phase 2) sets unitMemberId instead. */
     userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    /** Nullable: an MFT-managed roster entry's profile sets this instead of userId. */
+    unitMemberId: uuid("unit_member_id").references(() => unitMembers.id, {
+      onDelete: "cascade",
+    }),
     profileType: text("profile_type", { enum: ["temporary", "permanent"] }).notNull(),
     startDate: timestamp("start_date", { withTimezone: true }),
     /** Null for a permanent profile. */
@@ -175,10 +179,15 @@ export const medicalProfiles = pgTable(
   },
   (t) => ({
     userIdx: index("medical_profiles_user_idx").on(t.userId),
+    memberIdx: index("medical_profiles_member_idx").on(t.unitMemberId),
     // One active profile per user (partial — roster-entry profiles have null userId).
     activeUserUnique: uniqueIndex("medical_profiles_active_user_unique")
       .on(t.userId)
       .where(sql`${t.active} = true AND ${t.userId} IS NOT NULL`),
+    // One active profile per roster member.
+    activeMemberUnique: uniqueIndex("medical_profiles_active_member_unique")
+      .on(t.unitMemberId)
+      .where(sql`${t.active} = true AND ${t.unitMemberId} IS NOT NULL`),
   }),
 );
 
@@ -363,5 +372,73 @@ export const workouts = pgTable(
       t.weekIndex,
       t.dayOfWeek,
     ),
+  }),
+);
+
+/* ------------------------------------------------------------------ */
+/* Units & roster (group AT PT) — first multi-tenant surface          */
+/* ------------------------------------------------------------------ */
+
+/** A unit an MFT/leader owns. AT window fields are set when planning AT PT. */
+export const units = pgTable(
+  "units",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    /** The MFT/leader who created and owns the unit. */
+    ownerUserId: uuid("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    atStartDate: timestamp("at_start_date", { withTimezone: true }),
+    atDays: integer("at_days"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ ownerIdx: index("units_owner_idx").on(t.ownerUserId) }),
+);
+
+/**
+ * A soldier on a unit's roster. Hybrid model: the MFT enters the member and a
+ * baseline directly (no login needed); a soldier with an app account can later
+ * *claim* the entry via `claimToken`, which sets `userId`. Baseline fields are
+ * nullable so a member can be added before their scores are known.
+ */
+export const unitMembers = pgTable(
+  "unit_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    unitId: uuid("unit_id")
+      .notNull()
+      .references(() => units.id, { onDelete: "cascade" }),
+    /** Null until an app user claims this roster entry. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+    displayName: text("display_name").notNull(),
+    role: text("role", { enum: ["mft", "member"] }).notNull().default("member"),
+
+    // Baseline snapshot (nullable — MFT may add a member before baseline is known).
+    age: integer("age"),
+    sex: text("sex", { enum: ["MC", "F"] }),
+    bodyweightLb: integer("bodyweight_lb"),
+    heightIn: real("height_in"),
+    mdlLb: integer("mdl_lb"),
+    hrpReps: integer("hrp_reps"),
+    sdcSec: integer("sdc_sec"),
+    plkSec: integer("plk_sec"),
+    twoMileSec: integer("two_mile_sec"),
+
+    /** Single-use claim token (crypto-random). Null once claimed/cleared. */
+    claimToken: text("claim_token"),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    unitIdx: index("unit_members_unit_idx").on(t.unitId),
+    // A given app user links to a unit at most once.
+    unitUserUnique: uniqueIndex("unit_members_unit_user_unique")
+      .on(t.unitId, t.userId)
+      .where(sql`${t.userId} IS NOT NULL`),
+    claimTokenIdx: index("unit_members_claim_token_idx").on(t.claimToken),
   }),
 );

@@ -10,6 +10,7 @@ const TABS = [
   { href: "/calendar", label: "Calendar", icon: CalendarIcon },
   { href: "/progress", label: "Progress", icon: ProgressIcon },
   { href: "/body", label: "Body", icon: BodyIcon },
+  { href: "/units", label: "Units", icon: UnitsIcon },
 ] as const;
 
 export function AppNav({
@@ -91,7 +92,7 @@ export function AppNav({
         className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-line)] bg-[var(--color-bg)] pb-[max(env(safe-area-inset-bottom),0.25rem)] sm:hidden print:hidden"
         aria-label="App navigation"
       >
-        <ul className="grid grid-cols-5">
+        <ul className="grid grid-cols-6">
           {TABS.map((t) => {
             const Active = isActive(pathname, t.href);
             const Icon = t.icon;
@@ -183,6 +184,17 @@ function BodyIcon({ active }: { active: boolean }) {
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <circle cx="12" cy="5" r="2.5" fill={active ? "currentColor" : "none"} fillOpacity={active ? "0.12" : "0"} />
       <path d="M8 22V14H6L8 8h8l2 6h-2v8" fill={active ? "currentColor" : "none"} fillOpacity={active ? "0.12" : "0"} />
+    </svg>
+  );
+}
+
+function UnitsIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3" fill={active ? "currentColor" : "none"} fillOpacity={active ? "0.12" : "0"} />
+      <path d="M3.5 20a5.5 5.5 0 0 1 11 0" fill={active ? "currentColor" : "none"} fillOpacity={active ? "0.12" : "0"} />
+      <circle cx="17" cy="9" r="2.2" />
+      <path d="M16 14.2A4.8 4.8 0 0 1 21 19" />
     </svg>
   );
 }
