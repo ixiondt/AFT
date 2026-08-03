@@ -1,5 +1,13 @@
 export { auth, handlers, signIn, signOut } from "./config";
 export { getAuthAndUser, requireAdmin, isOwnerEmail } from "./admin";
+export {
+  decideUnitAccess,
+  getUnitContext,
+  requireUnitAccess,
+  isUnitOwner,
+  listUnitsForUser,
+  type UnitRole,
+} from "./units";
 
 import { auth } from "./config";
 
