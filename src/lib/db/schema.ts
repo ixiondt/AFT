@@ -139,6 +139,49 @@ export const profiles = pgTable(
   },
 );
 
+/**
+ * Medical profile (DA Form 3349) accommodations. Attaches to a `user` (the
+ * single-user app) — Phase 2 adds a nullable `unitMemberId` so an MFT-managed
+ * roster entry can carry one too. Exactly one active profile per user.
+ *
+ * V1 scope is *accommodations* (drives the PT the planner prescribes). AFT
+ * score-sheet effects (event exclusion, alternate Go/No-Go, temp-profile record
+ * block) are deliberately deferred.
+ */
+export const medicalProfiles = pgTable(
+  "medical_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Nullable: a roster-entry profile (Phase 2) sets unitMemberId instead. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    profileType: text("profile_type", { enum: ["temporary", "permanent"] }).notNull(),
+    startDate: timestamp("start_date", { withTimezone: true }),
+    /** Null for a permanent profile. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** Which AFT events (MDL/HRP/SDC/PLK/2MR) the profile exempts. */
+    exemptEvents: jsonb("exempt_events").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    alternateAerobic: text("alternate_aerobic", {
+      enum: ["none", "walk", "row", "bike", "swim"],
+    })
+      .notNull()
+      .default("none"),
+    /** RestrictionCode[] — no_run, no_impact, lift_limit, etc. */
+    restrictions: jsonb("restrictions").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    liftLimitLb: integer("lift_limit_lb"),
+    active: boolean("active").notNull().default(true),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userIdx: index("medical_profiles_user_idx").on(t.userId),
+    // One active profile per user (partial — roster-entry profiles have null userId).
+    activeUserUnique: uniqueIndex("medical_profiles_active_user_unique")
+      .on(t.userId)
+      .where(sql`${t.active} = true AND ${t.userId} IS NOT NULL`),
+  }),
+);
+
 /** A single AFT recorded for a user — either a baseline ("current") or a past test. */
 export const aftTests = pgTable(
   "aft_tests",

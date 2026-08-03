@@ -16,6 +16,7 @@ import {
   PaceCard,
   PlanSummary,
   RealismCard,
+  AccommodationsCard,
   WeeklyCalendar,
 } from "./components";
 import { ChatPanel, type ChatMessageView } from "./chat-panel";
@@ -132,6 +133,7 @@ export default async function PlanPage() {
 
       <div className="mt-8 space-y-10">
         <PlanSummary plan={plan} />
+        <AccommodationsCard plan={plan} />
         <RealismCard plan={plan} />
         <GapTable plan={plan} />
         <BlockBar plan={plan} />

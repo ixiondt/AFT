@@ -109,6 +109,17 @@ export type InitialFormValues = {
   injuries?: readonly string[];
   calisthenicsPreferred?: boolean;
   activeRecovery?: boolean;
+  medicalProfile?: {
+    hasMedicalProfile: boolean;
+    profileType?: "temporary" | "permanent";
+    profileStart?: string;
+    profileExpires?: string;
+    restrictions: string[];
+    exemptEvents: string[];
+    alternateAerobic: string;
+    liftLimitLb?: string;
+    profileNotes?: string;
+  };
   current?: Raw;
   goal?: Raw;
 };
@@ -130,6 +141,10 @@ export function ProfileForm({
   const [duration, setDuration] = useState<number>(iv.durationWeeks ?? DEFAULT_DURATION);
   const [testDate, setTestDate] = useState<string>(
     iv.testDate ?? addDaysIso(today, (iv.durationWeeks ?? DEFAULT_DURATION) * 7),
+  );
+
+  const [hasProfile, setHasProfile] = useState<boolean>(
+    iv.medicalProfile?.hasMedicalProfile ?? false,
   );
 
   const [current, setCurrent] = useState<Raw>(
@@ -312,6 +327,119 @@ export function ProfileForm({
           ]}
           checkedValues={iv.injuries ?? []}
         />
+      </Section>
+
+      <Section title="Medical profile (DA 3349)">
+        <p className="-mt-1 mb-1 text-xs text-[var(--color-ink-3)]">
+          On a profile? The plan will accommodate it — swap runs for an alternate
+          aerobic event, cap loads, and drop exempt events. (Score-sheet effects
+          come later; this shapes your training now.)
+        </p>
+        <CheckBox
+          name="hasMedicalProfile"
+          label="I have an active medical profile"
+          checked={hasProfile}
+          onChange={setHasProfile}
+        />
+        {hasProfile && (
+          <div className="mt-3 space-y-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-bg-2)] p-4">
+            <Row>
+              <Select
+                name="profileType"
+                label="Profile type"
+                defaultValue={iv.medicalProfile?.profileType ?? "temporary"}
+              >
+                <option value="temporary">Temporary</option>
+                <option value="permanent">Permanent</option>
+              </Select>
+              <DefaultDateInput
+                name="profileStart"
+                label="Start date (optional)"
+                defaultValue={iv.medicalProfile?.profileStart}
+              />
+              <DefaultDateInput
+                name="profileExpires"
+                label="Expires (optional)"
+                defaultValue={iv.medicalProfile?.profileExpires}
+              />
+            </Row>
+
+            <div>
+              <span className={labelClass}>Restrictions</span>
+              <div className="mt-2">
+                <CheckGroup
+                  name="restrictions"
+                  options={[
+                    ["no_run", "No running"],
+                    ["no_impact", "No impact / plyometrics"],
+                    ["no_ruck", "No ruck / road march"],
+                    ["no_overhead", "No overhead lifting"],
+                    ["lift_limit", "Lifting limit"],
+                    ["run_own_pace", "Run at own pace/distance"],
+                  ]}
+                  checkedValues={iv.medicalProfile?.restrictions ?? []}
+                />
+              </div>
+            </div>
+
+            <Row>
+              <Select
+                name="alternateAerobic"
+                label="Alternate aerobic event"
+                defaultValue={iv.medicalProfile?.alternateAerobic ?? "none"}
+              >
+                <option value="none">None (run as normal)</option>
+                <option value="walk">2.5-mile walk</option>
+                <option value="row">5,000 m row</option>
+                <option value="bike">12 km stationary bike</option>
+                <option value="swim">1,000 m swim</option>
+              </Select>
+              <NumberInput
+                name="liftLimitLb"
+                label="Lift limit (lb, optional)"
+                placeholder="e.g. 135"
+                defaultValue={iv.medicalProfile?.liftLimitLb}
+                min={0}
+                max={700}
+                step={5}
+                hint="Caps every prescribed load"
+              />
+            </Row>
+
+            <div>
+              <span className={labelClass}>Events exempted by the profile</span>
+              <p className="mt-0.5 text-xs text-[var(--color-ink-3)]">
+                Dropped from targets and training. (2MR + an alternate aerobic
+                event together = you train the alternate.)
+              </p>
+              <div className="mt-2">
+                <CheckGroup
+                  name="exemptEvents"
+                  options={[
+                    ["MDL", "MDL (deadlift)"],
+                    ["HRP", "HRP (push-up)"],
+                    ["SDC", "SDC (sprint-drag-carry)"],
+                    ["PLK", "PLK (plank)"],
+                    ["2MR", "2MR (2-mile run)"],
+                  ]}
+                  checkedValues={iv.medicalProfile?.exemptEvents ?? []}
+                />
+              </div>
+            </div>
+
+            <label className="block">
+              <span className={labelClass}>Notes (optional)</span>
+              <textarea
+                name="profileNotes"
+                rows={2}
+                maxLength={500}
+                defaultValue={iv.medicalProfile?.profileNotes}
+                placeholder="e.g. Right shoulder — no overhead until cleared"
+                className={inputClass}
+              />
+            </label>
+          </div>
+        )}
       </Section>
 
       <Section title="Preferences">
@@ -877,16 +1005,48 @@ function Select(props: {
   );
 }
 
-function CheckBox(props: { name: string; label: string; defaultChecked?: boolean }) {
+function CheckBox(props: {
+  name: string;
+  label: string;
+  defaultChecked?: boolean;
+  /** Provide `checked` + `onChange` for a controlled checkbox. */
+  checked?: boolean;
+  onChange?: (checked: boolean) => void;
+}) {
+  const controlled = props.checked !== undefined;
   return (
     <label className="flex items-center gap-2 text-sm text-[var(--color-ink-2)]">
       <input
         type="checkbox"
         name={props.name}
-        defaultChecked={props.defaultChecked}
+        {...(controlled
+          ? { checked: props.checked, onChange: (e) => props.onChange?.(e.target.checked) }
+          : { defaultChecked: props.defaultChecked })}
         className="h-4 w-4 rounded border-[var(--color-line)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
       />
       <span>{props.label}</span>
+    </label>
+  );
+}
+
+function DefaultDateInput(props: {
+  name: string;
+  label: string;
+  defaultValue?: string;
+  hint?: string;
+}) {
+  return (
+    <label className="block">
+      <span className={labelClass}>{props.label}</span>
+      <input
+        name={props.name}
+        type="date"
+        defaultValue={props.defaultValue}
+        className={inputClass}
+      />
+      {props.hint && (
+        <span className="mt-0.5 block text-xs text-[var(--color-ink-3)]">{props.hint}</span>
+      )}
     </label>
   );
 }

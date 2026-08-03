@@ -7,6 +7,7 @@ import { makeHrpProgression } from "./hrp";
 import { buildWeekDays } from "./days";
 import { makeCheckpoints } from "./checkpoints";
 import { computeRealismWarnings } from "./realism";
+import { applyAccommodations } from "./accommodations";
 import type { Plan, PlanInput, WeekPlan } from "./types";
 
 export * from "./types";
@@ -66,7 +67,7 @@ export function generatePlan(input: PlanInput, now: Date = new Date(0)): Plan {
     goal: input.goal,
   });
 
-  return {
+  const plan: Plan = {
     input,
     bracket,
     currentTotal: currentScore.total,
@@ -82,6 +83,10 @@ export function generatePlan(input: PlanInput, now: Date = new Date(0)): Plan {
     realism,
     generatedAt: now.toISOString(),
   };
+
+  // Reshape the plan to fit any medical-profile accommodations. No-op (returns
+  // `plan` unchanged) when the athlete has no profile.
+  return applyAccommodations(plan, input.profile);
 }
 
 function validateInput(input: PlanInput): void {

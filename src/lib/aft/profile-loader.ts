@@ -18,28 +18,47 @@ export type InitialFormValues = {
   activeRecovery?: boolean;
   current?: { mdl: string; hrp: string; sdc: string; plk: string; mr2: string };
   goal?: { mdl: string; hrp: string; sdc: string; plk: string; mr2: string };
+  medicalProfile?: {
+    hasMedicalProfile: boolean;
+    profileType?: "temporary" | "permanent";
+    profileStart?: string; // YYYY-MM-DD
+    profileExpires?: string; // YYYY-MM-DD
+    restrictions: string[];
+    exemptEvents: string[];
+    alternateAerobic: string;
+    liftLimitLb?: string;
+    profileNotes?: string;
+  };
 };
 
 const blankRaw = { mdl: "", hrp: "", sdc: "", plk: "", mr2: "" } as const;
 
 /** Load whatever a user has previously saved, normalized for form prefill. */
 export async function loadInitialFormValues(userId: string): Promise<InitialFormValues> {
-  const [profile, goal, latestTest, latestPlan, weightLog] = await Promise.all([
-    db.query.profiles.findFirst({ where: eq(schema.profiles.userId, userId) }),
-    db.query.goals.findFirst({
-      where: and(eq(schema.goals.userId, userId), eq(schema.goals.active, true)),
-      orderBy: [desc(schema.goals.createdAt)],
-    }),
-    db.query.aftTests.findFirst({
-      where: eq(schema.aftTests.userId, userId),
-      orderBy: [desc(schema.aftTests.testedAt)],
-    }),
-    db.query.plans.findFirst({
-      where: and(eq(schema.plans.userId, userId), eq(schema.plans.active, true)),
-      orderBy: [desc(schema.plans.createdAt)],
-    }),
-    loadWeightLog({ userId }),
-  ]);
+  const [profile, goal, latestTest, latestPlan, weightLog, medProfile] =
+    await Promise.all([
+      db.query.profiles.findFirst({ where: eq(schema.profiles.userId, userId) }),
+      db.query.goals.findFirst({
+        where: and(eq(schema.goals.userId, userId), eq(schema.goals.active, true)),
+        orderBy: [desc(schema.goals.createdAt)],
+      }),
+      db.query.aftTests.findFirst({
+        where: eq(schema.aftTests.userId, userId),
+        orderBy: [desc(schema.aftTests.testedAt)],
+      }),
+      db.query.plans.findFirst({
+        where: and(eq(schema.plans.userId, userId), eq(schema.plans.active, true)),
+        orderBy: [desc(schema.plans.createdAt)],
+      }),
+      loadWeightLog({ userId }),
+      db.query.medicalProfiles.findFirst({
+        where: and(
+          eq(schema.medicalProfiles.userId, userId),
+          eq(schema.medicalProfiles.active, true),
+        ),
+        orderBy: [desc(schema.medicalProfiles.createdAt)],
+      }),
+    ]);
 
   const out: InitialFormValues = {};
 
@@ -90,6 +109,33 @@ export async function loadInitialFormValues(userId: string): Promise<InitialForm
     };
   } else {
     out.goal = { ...blankRaw };
+  }
+
+  if (medProfile) {
+    out.medicalProfile = {
+      hasMedicalProfile: true,
+      profileType: medProfile.profileType,
+      ...(medProfile.startDate
+        ? { profileStart: new Date(medProfile.startDate).toISOString().slice(0, 10) }
+        : {}),
+      ...(medProfile.expiresAt
+        ? { profileExpires: new Date(medProfile.expiresAt).toISOString().slice(0, 10) }
+        : {}),
+      restrictions: (medProfile.restrictions ?? []) as string[],
+      exemptEvents: (medProfile.exemptEvents ?? []) as string[],
+      alternateAerobic: medProfile.alternateAerobic,
+      ...(medProfile.liftLimitLb != null
+        ? { liftLimitLb: String(medProfile.liftLimitLb) }
+        : {}),
+      ...(medProfile.notes ? { profileNotes: medProfile.notes } : {}),
+    };
+  } else {
+    out.medicalProfile = {
+      hasMedicalProfile: false,
+      restrictions: [],
+      exemptEvents: [],
+      alternateAerobic: "none",
+    };
   }
 
   if (latestTest) {

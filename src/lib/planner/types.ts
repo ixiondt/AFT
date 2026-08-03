@@ -18,6 +18,35 @@ export type Injury =
   | "hip"
   | "wrist";
 
+/**
+ * Functional restrictions that come off a medical profile (DA Form 3349).
+ * Distinct from `Injury` (a training preference that swaps an exercise) — a
+ * restriction reshapes what the plan may prescribe at all.
+ */
+export type RestrictionCode =
+  | "no_run"
+  | "no_impact"
+  | "no_ruck"
+  | "no_overhead"
+  | "lift_limit"
+  | "run_own_pace";
+
+/** Permanent-profile alternate aerobic event; "none" = run as normal. */
+export type AlternateAerobic = "none" | "walk" | "row" | "bike" | "swim";
+
+/**
+ * Accommodation inputs derived from a soldier's medical profile. Drives the
+ * post-generation accommodation pass (see `accommodations.ts`). When absent or
+ * empty the pass is a no-op and the plan is byte-identical to the un-profiled one.
+ */
+export type ProfileAccommodation = {
+  restrictions: readonly RestrictionCode[];
+  exemptEvents: readonly Event[];
+  alternateAerobic: AlternateAerobic;
+  /** Hard ceiling (lb) on any prescribed load. Paired with the `lift_limit` restriction. */
+  liftLimitLb?: number;
+};
+
 export type Preferences = {
   /** Prefer calisthenic accessories (pull-ups, dips, single-leg) over loaded barbell. */
   calisthenicsPreferred: boolean;
@@ -36,6 +65,8 @@ export type PlanInput = {
   equipment: readonly Equipment[];
   injuries: readonly Injury[];
   preferences: Preferences;
+  /** Optional medical-profile accommodations. Absent = no profile. */
+  profile?: ProfileAccommodation;
   current: RawScores; // raw values; times in seconds
   goal: RawScores;
   testDate: string; // ISO date
@@ -197,6 +228,12 @@ export type Plan = {
   checkpoints: readonly Checkpoint[];
   /** Non-blocking warnings about how aggressive the goals are vs the duration. */
   realism: readonly RealismWarningStored[];
+  /**
+   * Human-readable summary of medical-profile accommodations applied to this
+   * plan (alt cardio, lift caps, exempt events, impact swaps). Absent when no
+   * profile applied — drives the accommodations banner on the plan view.
+   */
+  accommodations?: readonly string[];
   generatedAt: string; // ISO timestamp injected by caller
   narrative?: PlanNarrative;
 };
