@@ -442,3 +442,28 @@ export const unitMembers = pgTable(
     claimTokenIdx: index("unit_members_claim_token_idx").on(t.claimToken),
   }),
 );
+
+/** A generated Annual Training group PT plan for a unit. One active per unit. */
+export const atPlans = pgTable(
+  "at_plans",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    unitId: uuid("unit_id")
+      .notNull()
+      .references(() => units.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+    days: integer("days").notNull(),
+    /** The generated AtPlan (schedule + ability groups + per-soldier cards). */
+    payload: jsonb("payload").notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    unitIdx: index("at_plans_unit_idx").on(t.unitId),
+    activeUnique: uniqueIndex("at_plans_active_unique")
+      .on(t.unitId)
+      .where(sql`${t.active} = true`),
+  }),
+);
