@@ -38,6 +38,25 @@ export const injuryEnum = z.enum([
   "wrist",
 ]);
 
+export const restrictionEnum = z.enum([
+  "no_run",
+  "no_impact",
+  "no_ruck",
+  "no_overhead",
+  "lift_limit",
+  "run_own_pace",
+]);
+
+export const eventEnum = z.enum(["MDL", "HRP", "SDC", "PLK", "2MR"]);
+
+export const alternateAerobicEnum = z.enum(["none", "walk", "row", "bike", "swim"]);
+
+/** An empty-string form field coerces to `undefined` (optional not submitted). */
+const optionalDateField = z
+  .string()
+  .optional()
+  .or(z.literal("").transform(() => undefined));
+
 export const PROFILE_FORM_SCHEMA = z.object({
   age: z.coerce.number().int().min(17).max(80),
   sex: z.enum(["MC", "F"]),
@@ -63,6 +82,27 @@ export const PROFILE_FORM_SCHEMA = z.object({
   injuries: z.array(injuryEnum).default([]),
   calisthenicsPreferred: z.coerce.boolean().default(false),
   activeRecovery: z.coerce.boolean().default(true),
+
+  // ---- Medical profile (DA 3349) accommodations — all optional ----
+  hasMedicalProfile: z.coerce.boolean().default(false),
+  profileType: z.enum(["temporary", "permanent"]).optional(),
+  profileStart: optionalDateField,
+  profileExpires: optionalDateField,
+  restrictions: z.array(restrictionEnum).default([]),
+  exemptEvents: z.array(eventEnum).default([]),
+  alternateAerobic: alternateAerobicEnum.default("none"),
+  liftLimitLb: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(700)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  profileNotes: z
+    .string()
+    .max(500)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
 
   currentMdlLb: z.coerce.number().int().min(50).max(700),
   currentHrpReps: z.coerce.number().int().min(0).max(150),

@@ -7,8 +7,10 @@ import {
   PROFILE_FORM_SCHEMA,
   checkboxValue,
   equipmentEnum,
+  eventEnum,
   injuryEnum,
   multiValue,
+  restrictionEnum,
 } from "@/lib/aft/schemas";
 import { persistGeneratedPlan } from "@/lib/aft/plan-service";
 
@@ -25,6 +27,14 @@ export async function generatePlanAction(formData: FormData): Promise<void> {
     (v): v is import("zod").infer<typeof injuryEnum> =>
       injuryEnum.safeParse(v).success,
   );
+  const restrictions = multiValue(formData, "restrictions").filter(
+    (v): v is import("zod").infer<typeof restrictionEnum> =>
+      restrictionEnum.safeParse(v).success,
+  );
+  const exemptEvents = multiValue(formData, "exemptEvents").filter(
+    (v): v is import("zod").infer<typeof eventEnum> =>
+      eventEnum.safeParse(v).success,
+  );
 
   const parsed = PROFILE_FORM_SCHEMA.safeParse({
     age: formData.get("age"),
@@ -39,6 +49,15 @@ export async function generatePlanAction(formData: FormData): Promise<void> {
     injuries,
     calisthenicsPreferred: checkboxValue(formData, "calisthenicsPreferred"),
     activeRecovery: checkboxValue(formData, "activeRecovery"),
+    hasMedicalProfile: checkboxValue(formData, "hasMedicalProfile"),
+    profileType: formData.get("profileType") || undefined,
+    profileStart: formData.get("profileStart"),
+    profileExpires: formData.get("profileExpires"),
+    restrictions,
+    exemptEvents,
+    alternateAerobic: formData.get("alternateAerobic") ?? "none",
+    liftLimitLb: formData.get("liftLimitLb"),
+    profileNotes: formData.get("profileNotes"),
     currentMdlLb: formData.get("currentMdlLb"),
     currentHrpReps: formData.get("currentHrpReps"),
     currentSdc: formData.get("currentSdc"),

@@ -22,6 +22,16 @@ export function formToPlanInput(form: ProfileFormInput): PlanInput {
       calisthenicsPreferred: form.calisthenicsPreferred,
       activeRecovery: form.activeRecovery,
     },
+    ...(form.hasMedicalProfile
+      ? {
+          profile: {
+            restrictions: form.restrictions,
+            exemptEvents: form.exemptEvents,
+            alternateAerobic: form.alternateAerobic,
+            ...(form.liftLimitLb !== undefined ? { liftLimitLb: form.liftLimitLb } : {}),
+          },
+        }
+      : {}),
     current: {
       MDL: form.currentMdlLb,
       HRP: form.currentHrpReps,
@@ -88,6 +98,32 @@ export async function persistGeneratedPlan(args: {
         updatedAt: new Date(),
       },
     });
+
+  // Upsert medical profile: deactivate any prior active one, then insert the
+  // new active profile if the form declares one. (One active profile per user.)
+  await db
+    .update(schema.medicalProfiles)
+    .set({ active: false, updatedAt: new Date() })
+    .where(
+      and(
+        eq(schema.medicalProfiles.userId, userId),
+        eq(schema.medicalProfiles.active, true),
+      ),
+    );
+  if (form.hasMedicalProfile && form.profileType) {
+    await db.insert(schema.medicalProfiles).values({
+      userId,
+      profileType: form.profileType,
+      startDate: form.profileStart ? new Date(form.profileStart) : null,
+      expiresAt: form.profileExpires ? new Date(form.profileExpires) : null,
+      exemptEvents: form.exemptEvents as string[],
+      alternateAerobic: form.alternateAerobic,
+      restrictions: form.restrictions as string[],
+      liftLimitLb: form.liftLimitLb ?? null,
+      notes: form.profileNotes ?? null,
+      active: true,
+    });
+  }
 
   // Insert baseline test
   const bracket = ageToBracket(form.age);

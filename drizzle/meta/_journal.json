@@ -57,6 +57,13 @@
       "when": 1785547415415,
       "tag": "0007_lumpy_carmella_unuscione",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785794693882,
+      "tag": "0008_thankful_dark_beast",
+      "breakpoints": true
     }
   ]
 }

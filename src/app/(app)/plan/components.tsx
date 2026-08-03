@@ -68,6 +68,38 @@ export function RealismCard({ plan }: { plan: Plan }) {
   );
 }
 
+export function AccommodationsCard({ plan }: { plan: Plan }) {
+  const items = plan.accommodations ?? [];
+  if (!items.length) return null;
+  const accent = "var(--color-info)";
+  return (
+    <section
+      className="rounded-xl border-2 p-4 print-keep"
+      style={{ borderColor: accent }}
+    >
+      <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: accent }}>
+        <span>♿</span>
+        Profile accommodations
+      </h2>
+      <ul className="mt-2 space-y-1.5 text-sm text-[var(--color-ink-2)]">
+        {items.map((line, i) => (
+          <li key={i} className="flex items-baseline gap-2">
+            <span
+              className="inline-block h-2 w-2 shrink-0 rounded-full"
+              style={{ background: accent }}
+              aria-hidden="true"
+            />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-[10px] uppercase tracking-wider text-[var(--color-ink-3)]">
+        This plan is adapted to your medical profile. Train within your profile’s limits.
+      </p>
+    </section>
+  );
+}
+
 function RealismDot({ severity }: { severity: "info" | "warn" | "danger" }) {
   const color =
     severity === "danger"
