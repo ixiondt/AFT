@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS "units" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "medical_profiles" ADD COLUMN "unit_member_id" uuid;--> statement-breakpoint
+ALTER TABLE "medical_profiles" ADD COLUMN IF NOT EXISTS "unit_member_id" uuid;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "unit_members" ADD CONSTRAINT "unit_members_unit_id_units_id_fk" FOREIGN KEY ("unit_id") REFERENCES "public"."units"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
