@@ -110,6 +110,11 @@ export async function updateMember(args: {
   return true;
 }
 
+/** Delete a unit and everything under it (members, AT plans — FK cascade). */
+export async function deleteUnit(unitId: string): Promise<void> {
+  await db.delete(schema.units).where(eq(schema.units.id, unitId));
+}
+
 export async function removeMember(args: {
   unitId: string;
   memberId: string;

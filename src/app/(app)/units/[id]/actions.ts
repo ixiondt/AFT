@@ -12,7 +12,7 @@ import {
 import { setFlash } from "@/lib/flash";
 import { logger } from "@/lib/logger";
 import { MEMBER_SCHEMA } from "@/lib/units/schemas";
-import { addMember, removeMember, updateMember } from "@/lib/units/service";
+import { addMember, deleteUnit, removeMember, updateMember } from "@/lib/units/service";
 
 /** Build the MEMBER_SCHEMA input object from raw FormData. */
 function readMemberForm(formData: FormData) {
@@ -97,4 +97,14 @@ export async function removeMemberAction(formData: FormData): Promise<void> {
   await removeMember({ unitId, memberId });
   await setFlash("Member removed");
   revalidatePath(`/units/${unitId}`);
+}
+
+export async function deleteUnitAction(formData: FormData): Promise<void> {
+  const unitId = String(formData.get("unitId") ?? "");
+  // Owner-only — an MFT member can manage the roster but not delete the unit.
+  await requireUnitAccess(unitId, ["owner"]);
+
+  await deleteUnit(unitId);
+  await setFlash("Unit deleted");
+  redirect("/units");
 }

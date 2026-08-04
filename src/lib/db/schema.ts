@@ -407,7 +407,14 @@ export const units = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => ({ ownerIdx: index("units_owner_idx").on(t.ownerUserId) }),
+  (t) => ({
+    ownerIdx: index("units_owner_idx").on(t.ownerUserId),
+    // A given owner can't have two units with the same (case-insensitive) name.
+    ownerNameUnique: uniqueIndex("units_owner_name_unique").on(
+      t.ownerUserId,
+      sql`lower(${t.name})`,
+    ),
+  }),
 );
 
 /**
