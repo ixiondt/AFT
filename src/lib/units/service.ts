@@ -34,6 +34,7 @@ function memberRowFields(input: MemberInput) {
     sdcSec: input.sdcSec ?? null,
     plkSec: input.plkSec ?? null,
     twoMileSec: input.twoMileSec ?? null,
+    alternateResult: input.alternateResult ?? null,
   };
 }
 

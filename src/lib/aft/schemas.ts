@@ -51,6 +51,8 @@ export const eventEnum = z.enum(["MDL", "HRP", "SDC", "PLK", "2MR"]);
 
 export const alternateAerobicEnum = z.enum(["none", "walk", "row", "bike", "swim"]);
 
+export const goNoGoEnum = z.enum(["go", "no_go"]);
+
 /** An empty-string form field coerces to `undefined` (optional not submitted). */
 const optionalDateField = z
   .string()
@@ -91,6 +93,10 @@ export const PROFILE_FORM_SCHEMA = z.object({
   restrictions: z.array(restrictionEnum).default([]),
   exemptEvents: z.array(eventEnum).default([]),
   alternateAerobic: alternateAerobicEnum.default("none"),
+  /** Go/No-Go for the alternate aerobic event on the CURRENT test (profiled). */
+  currentAlternateResult: goNoGoEnum
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   liftLimitLb: z.coerce
     .number()
     .int()

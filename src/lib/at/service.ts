@@ -38,6 +38,8 @@ export function memberToAtInput(m: RosterMember): AtMemberInput {
         exemptEvents: (mp.exemptEvents ?? []) as Event[],
         alternateAerobic: mp.alternateAerobic as AlternateAerobic,
         ...(mp.liftLimitLb != null ? { liftLimitLb: mp.liftLimitLb } : {}),
+        profileType: mp.profileType,
+        ...(m.alternateResult ? { alternateResult: m.alternateResult } : {}),
       }
     : undefined;
 

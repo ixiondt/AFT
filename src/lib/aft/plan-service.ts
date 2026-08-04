@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { ageToBracket } from "@/lib/scoring";
+import { scoreAftProfiled } from "@/lib/scoring/profiled";
 import { generatePlan, type Plan, type PlanInput } from "@/lib/planner";
 import { db, schema } from "@/lib/db";
 import { and, eq } from "drizzle-orm";
@@ -29,6 +30,10 @@ export function formToPlanInput(form: ProfileFormInput): PlanInput {
             exemptEvents: form.exemptEvents,
             alternateAerobic: form.alternateAerobic,
             ...(form.liftLimitLb !== undefined ? { liftLimitLb: form.liftLimitLb } : {}),
+            ...(form.profileType ? { profileType: form.profileType } : {}),
+            ...(form.currentAlternateResult
+              ? { alternateResult: form.currentAlternateResult }
+              : {}),
           },
         }
       : {}),
@@ -125,8 +130,42 @@ export async function persistGeneratedPlan(args: {
     });
   }
 
-  // Insert baseline test
+  // Insert baseline test. When a profile applies, capture the doctrinal scoring
+  // context (exempt events, alternate Go/No-Go, record vs diagnostic).
   const bracket = ageToBracket(form.age);
+  const profileContext =
+    form.hasMedicalProfile && form.profileType
+      ? (() => {
+          const r = scoreAftProfiled({
+            age: form.age,
+            sex: form.sex,
+            raw: {
+              MDL: form.currentMdlLb,
+              HRP: form.currentHrpReps,
+              SDC: form.currentSdc,
+              PLK: form.currentPlk,
+              "2MR": form.current2MR,
+            },
+            profile: {
+              profileType: form.profileType,
+              exemptEvents: form.exemptEvents,
+              alternateAerobic: form.alternateAerobic,
+              ...(form.currentAlternateResult
+                ? { alternateResult: form.currentAlternateResult }
+                : {}),
+            },
+          });
+          return {
+            profileType: form.profileType,
+            isRecord: r.isRecord,
+            exemptEvents: form.exemptEvents as string[],
+            alternateAerobic: form.alternateAerobic,
+            ...(r.alternate ? { alternateResult: r.alternate.result } : {}),
+            scoredEventCount: r.scoredEventCount,
+          };
+        })()
+      : null;
+
   const [test] = await db
     .insert(schema.aftTests)
     .values({
@@ -141,6 +180,7 @@ export async function persistGeneratedPlan(args: {
       bracketSnapshot: bracket,
       sexSnapshot: form.sex,
       totalPoints: plan.currentTotal,
+      ...(profileContext ? { profileContext } : {}),
     })
     .returning({ id: schema.aftTests.id });
   if (!test) throw new Error("Failed to insert baseline test");

@@ -45,6 +45,10 @@ export type ProfileAccommodation = {
   alternateAerobic: AlternateAerobic;
   /** Hard ceiling (lb) on any prescribed load. Paired with the `lift_limit` restriction. */
   liftLimitLb?: number;
+  /** Temp = diagnostic score; permanent = record. Drives profile-aware scoring. */
+  profileType?: "temporary" | "permanent";
+  /** Go/No-Go of the alternate aerobic event, for scoring the current/baseline test. */
+  alternateResult?: "go" | "no_go";
 };
 
 export type Preferences = {

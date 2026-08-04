@@ -42,6 +42,7 @@ function readMemberForm(formData: FormData) {
     restrictions,
     exemptEvents,
     alternateAerobic: formData.get("alternateAerobic") || "none",
+    alternateResult: formData.get("alternateResult") || undefined,
     liftLimitLb: formData.get("liftLimitLb"),
     profileNotes: formData.get("profileNotes"),
   };

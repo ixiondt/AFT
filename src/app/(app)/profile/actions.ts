@@ -56,6 +56,7 @@ export async function generatePlanAction(formData: FormData): Promise<void> {
     restrictions,
     exemptEvents,
     alternateAerobic: formData.get("alternateAerobic") ?? "none",
+    currentAlternateResult: formData.get("currentAlternateResult") || undefined,
     liftLimitLb: formData.get("liftLimitLb"),
     profileNotes: formData.get("profileNotes"),
     currentMdlLb: formData.get("currentMdlLb"),

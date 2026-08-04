@@ -41,6 +41,14 @@ export type AtSoldierCard = {
   strengthPrescription: string;
   accommodations: readonly string[];
   notes: readonly string[];
+  /** Baseline AFT score (profile-aware) when a full baseline is on file. */
+  aftScore?: {
+    total: number;
+    scoredEventCount: number;
+    isRecord: boolean;
+    pass: boolean;
+    profiled: boolean;
+  };
 };
 
 export type AtMemberInput = {

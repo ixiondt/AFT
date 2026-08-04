@@ -136,6 +136,32 @@ describe("generateAtPlan — soldier cards", () => {
     expect(plan.cards[0]!.strengthPrescription.toLowerCase()).toContain("exempt");
   });
 
+  it("attaches a profile-aware AFT score to a card with a full baseline", () => {
+    const full = { MDL: 320, HRP: 50, SDC: mmssToSec("1:40"), PLK: mmssToSec("3:10"), "2MR": mmssToSec("15:00") };
+    const plan = planWith([
+      member({ id: "s", displayName: "S", twoMileSec: mmssToSec("15:00"), mdlLb: 320, baseline: full }),
+      member({
+        id: "p",
+        displayName: "P",
+        twoMileSec: mmssToSec("15:00"),
+        mdlLb: 320,
+        baseline: full,
+        profile: {
+          restrictions: [],
+          exemptEvents: ["HRP"],
+          alternateAerobic: "none",
+          profileType: "permanent",
+        },
+      }),
+    ]);
+    const std = plan.cards.find((c) => c.memberId === "s")!;
+    const prof = plan.cards.find((c) => c.memberId === "p")!;
+    expect(std.aftScore?.profiled).toBe(false);
+    expect(std.aftScore?.scoredEventCount).toBe(5);
+    expect(prof.aftScore?.profiled).toBe(true);
+    expect(prof.aftScore?.scoredEventCount).toBe(4); // HRP exempt
+  });
+
   it("empty roster still produces a valid plan with a warning", () => {
     const plan = planWith([]);
     expect(plan.cards.length).toBe(0);

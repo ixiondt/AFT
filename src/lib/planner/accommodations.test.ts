@@ -146,6 +146,23 @@ describe("applyAccommodations — impact swaps", () => {
   });
 });
 
+describe("generatePlan — profiled totals", () => {
+  it("plan totals follow doctrinal scoring: exempt HRP + row Go", () => {
+    const unprofiled = generatePlan(BASE, NOW);
+    const profiled = generatePlan(withProfile({
+      restrictions: ["no_run"],
+      exemptEvents: ["HRP"],
+      alternateAerobic: "row",
+      profileType: "permanent",
+      alternateResult: "go",
+    }), NOW);
+    // Exempting a scored event lowers the total vs the full 5-event basis.
+    expect(profiled.currentTotal).toBeLessThan(unprofiled.currentTotal);
+    // Goal total assumes a Go (60) on the alternate — still a finite number.
+    expect(profiled.goalTotal).toBeGreaterThan(0);
+  });
+});
+
 describe("applyAccommodations — exempt events", () => {
   it("drops an exempt event from gaps and checkpoints and empties its progression", () => {
     const plan = generatePlan(withProfile({

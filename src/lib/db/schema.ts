@@ -209,6 +209,19 @@ export const aftTests = pgTable(
     bracketSnapshot: text("bracket_snapshot").notNull(), // age bracket at time of test
     sexSnapshot: text("sex_snapshot", { enum: ["MC", "F"] }).notNull(),
     totalPoints: integer("total_points").notNull(),
+    /**
+     * When this test was scored under a medical profile, the doctrinal context:
+     * which events were exempt, the alternate aerobic event + Go/No-Go, whether
+     * it's a record (permanent) or diagnostic (temporary). Null = standard 5-event.
+     */
+    profileContext: jsonb("profile_context").$type<{
+      profileType: "temporary" | "permanent";
+      isRecord: boolean;
+      exemptEvents: string[];
+      alternateAerobic: "none" | "walk" | "row" | "bike" | "swim";
+      alternateResult?: "go" | "no_go";
+      scoredEventCount: number;
+    }>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -425,6 +438,8 @@ export const unitMembers = pgTable(
     sdcSec: integer("sdc_sec"),
     plkSec: integer("plk_sec"),
     twoMileSec: integer("two_mile_sec"),
+    /** Go/No-Go result of the alternate aerobic event (profiled members). */
+    alternateResult: text("alternate_result", { enum: ["go", "no_go"] }),
 
     /** Single-use claim token (crypto-random). Null once claimed/cleared. */
     claimToken: text("claim_token"),

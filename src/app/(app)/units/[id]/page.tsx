@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireUnitAccess } from "@/lib/auth";
 import { getUnitRoster, type RosterMember } from "@/lib/units/service";
 import { ageToBracket, scoreAft, secToMmss } from "@/lib/scoring";
+import { scoreAftProfiled, type AlternateModality } from "@/lib/scoring/profiled";
+import type { Event } from "@/lib/scoring/types";
 import { readFlash } from "@/lib/flash";
 import { SubmitButton } from "../../../submit-button";
 import { MemberForm } from "./member-form";
@@ -103,17 +105,31 @@ function baselineSummary(m: RosterMember): string | null {
   ) {
     return null;
   }
-  const res = scoreAft({
-    age: m.age,
-    sex: m.sex,
-    raw: {
-      MDL: m.mdlLb,
-      HRP: m.hrpReps,
-      SDC: m.sdcSec,
-      PLK: m.plkSec,
-      "2MR": m.twoMileSec,
-    },
-  });
+  const raw = {
+    MDL: m.mdlLb,
+    HRP: m.hrpReps,
+    SDC: m.sdcSec,
+    PLK: m.plkSec,
+    "2MR": m.twoMileSec,
+  };
+
+  const prof = m.medicalProfile;
+  if (prof) {
+    const r = scoreAftProfiled({
+      age: m.age,
+      sex: m.sex,
+      raw,
+      profile: {
+        profileType: prof.profileType,
+        exemptEvents: (prof.exemptEvents ?? []) as Event[],
+        alternateAerobic: prof.alternateAerobic as "none" | AlternateModality,
+        ...(m.alternateResult ? { alternateResult: m.alternateResult } : {}),
+      },
+    });
+    return `${r.total} pts / ${r.scoredEventCount} events${r.isRecord ? "" : " (diagnostic)"} · bracket ${ageToBracket(m.age)}`;
+  }
+
+  const res = scoreAft({ age: m.age, sex: m.sex, raw });
   return `${res.total} pts · 2MR ${secToMmss(m.twoMileSec)} · bracket ${ageToBracket(m.age)}`;
 }
 
