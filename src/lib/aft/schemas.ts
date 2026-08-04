@@ -53,30 +53,31 @@ export const alternateAerobicEnum = z.enum(["none", "walk", "row", "bike", "swim
 
 export const goNoGoEnum = z.enum(["go", "no_go"]);
 
-/** An empty-string form field coerces to `undefined` (optional not submitted). */
-const optionalDateField = z
-  .string()
-  .optional()
-  .or(z.literal("").transform(() => undefined));
+/**
+ * Make an optional form field tolerant of every "absent" shape FormData can
+ * produce: `""` (rendered-but-empty), `null` (field not in the DOM — e.g. a
+ * collapsed section), and `undefined`. All coerce to `undefined`; a real value
+ * is validated by `schema`. Prevents the ZodUnion "Invalid input" that
+ * `.optional().or(z.literal(""))` throws on `null`.
+ */
+export function emptyToUndefined<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    schema.optional(),
+  );
+}
+
+/** An empty/absent form field coerces to `undefined`. */
+const optionalDateField = emptyToUndefined(z.string());
 
 export const PROFILE_FORM_SCHEMA = z.object({
   age: z.coerce.number().int().min(17).max(80),
   sex: z.enum(["MC", "F"]),
   bodyweightLb: z.coerce.number().int().min(80).max(500),
-  goalBodyweightLb: z.coerce
-    .number()
-    .int()
-    .min(80)
-    .max(500)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  heightIn: z.coerce
-    .number()
-    .multipleOf(0.5, "Height must be to the nearest 0.5 inch")
-    .min(48)
-    .max(96)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  goalBodyweightLb: emptyToUndefined(z.coerce.number().int().min(80).max(500)),
+  heightIn: emptyToUndefined(
+    z.coerce.number().multipleOf(0.5, "Height must be to the nearest 0.5 inch").min(48).max(96),
+  ),
   daysPerWeek: z.coerce.number().int().refine((n) => [3, 4, 5, 6].includes(n), "Choose 3, 4, 5, or 6"),
   durationWeeks: z.coerce.number().int().min(6).max(26),
   testDate: z.string().min(1, "Pick a test date"),
@@ -87,28 +88,16 @@ export const PROFILE_FORM_SCHEMA = z.object({
 
   // ---- Medical profile (DA 3349) accommodations — all optional ----
   hasMedicalProfile: z.coerce.boolean().default(false),
-  profileType: z.enum(["temporary", "permanent"]).optional(),
+  profileType: emptyToUndefined(z.enum(["temporary", "permanent"])),
   profileStart: optionalDateField,
   profileExpires: optionalDateField,
   restrictions: z.array(restrictionEnum).default([]),
   exemptEvents: z.array(eventEnum).default([]),
   alternateAerobic: alternateAerobicEnum.default("none"),
   /** Go/No-Go for the alternate aerobic event on the CURRENT test (profiled). */
-  currentAlternateResult: goNoGoEnum
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  liftLimitLb: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(700)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  profileNotes: z
-    .string()
-    .max(500)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  currentAlternateResult: emptyToUndefined(goNoGoEnum),
+  liftLimitLb: emptyToUndefined(z.coerce.number().int().min(0).max(700)),
+  profileNotes: emptyToUndefined(z.string().max(500)),
 
   currentMdlLb: z.coerce.number().int().min(50).max(700),
   currentHrpReps: z.coerce.number().int().min(0).max(150),

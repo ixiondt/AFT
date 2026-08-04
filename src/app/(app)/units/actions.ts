@@ -22,6 +22,11 @@ export async function createUnitAction(formData: FormData): Promise<void> {
     const unit = await createUnit({ ownerUserId: auth.user.id, name: parsed.data.name });
     unitId = unit.id;
   } catch (err) {
+    // Postgres unique_violation → duplicate name for this owner.
+    if ((err as { code?: string }).code === "23505") {
+      await setFlash(`You already have a unit named "${parsed.data.name}"`, "error");
+      redirect("/units");
+    }
     logger.error({ err: (err as Error).message, userId: auth.user.id }, "create unit failed");
     await setFlash("Could not create unit. Try again.", "error");
     redirect("/units");

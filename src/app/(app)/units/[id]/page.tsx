@@ -8,7 +8,13 @@ import { readFlash } from "@/lib/flash";
 import { SubmitButton } from "../../../submit-button";
 import { MemberForm } from "./member-form";
 import { ClaimLink } from "./claim-link";
-import { addMemberAction, removeMemberAction, updateMemberAction } from "./actions";
+import { DeleteUnitButton } from "./delete-unit-button";
+import {
+  addMemberAction,
+  deleteUnitAction,
+  removeMemberAction,
+  updateMemberAction,
+} from "./actions";
 
 export default async function UnitPage({
   params,
@@ -87,6 +93,17 @@ export default async function UnitPage({
               <MemberForm action={addMemberAction} unitId={id} submitLabel="Add soldier" />
             </div>
           </details>
+        </section>
+      )}
+
+      {ctx.role === "owner" && (
+        <section className="mt-10 border-t border-[var(--color-line)] pt-6">
+          <h2 className="text-xs font-mono uppercase tracking-widest text-[var(--color-ink-3)]">
+            Danger zone
+          </h2>
+          <div className="mt-2">
+            <DeleteUnitButton action={deleteUnitAction} unitId={id} />
+          </div>
         </section>
       )}
     </main>

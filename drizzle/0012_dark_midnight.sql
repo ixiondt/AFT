@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "units_owner_name_unique" ON "units" USING btree ("owner_user_id",lower("name"));

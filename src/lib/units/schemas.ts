@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   alternateAerobicEnum,
+  emptyToUndefined,
   eventEnum,
   goNoGoEnum,
   restrictionEnum,
@@ -17,50 +18,37 @@ function parseMmss(raw: unknown): number | null {
   return min * 60 + sec;
 }
 
-/** Optional m:ss field — blank → undefined, malformed → error. */
-const optMmss = z
-  .union([
-    z.literal("").transform(() => undefined),
-    z
-      .string()
-      .refine((s) => parseMmss(s) !== null, "Use m:ss format, e.g. 17:37")
-      .transform((s) => parseMmss(s) as number),
-  ])
-  .optional();
+/** Optional m:ss field — blank/absent → undefined, malformed → error. */
+const optMmss = emptyToUndefined(
+  z
+    .string()
+    .refine((s) => parseMmss(s) !== null, "Use m:ss format, e.g. 17:37")
+    .transform((s) => parseMmss(s) as number),
+);
 
-/** Optional positive integer field — blank → undefined. */
+/** Optional integer field — blank/absent → undefined. */
 const optInt = (min: number, max: number) =>
-  z.coerce
-    .number()
-    .int()
-    .min(min)
-    .max(max)
-    .optional()
-    .or(z.literal("").transform(() => undefined));
+  emptyToUndefined(z.coerce.number().int().min(min).max(max));
 
 export const CREATE_UNIT_SCHEMA = z.object({
-  name: z.string().min(1, "Name your unit").max(120),
+  name: z.string().trim().min(1, "Name your unit").max(120),
 });
 export type CreateUnitInput = z.infer<typeof CREATE_UNIT_SCHEMA>;
 
 export const MEMBER_SCHEMA = z.object({
-  displayName: z.string().min(1, "Name required").max(120),
-  role: z.enum(["mft", "member"]).default("member"),
+  displayName: z.string().trim().min(1, "Name required").max(120),
+  role: z.preprocess(
+    (v) => (v === "" || v == null ? "member" : v),
+    z.enum(["mft", "member"]),
+  ),
 
   // Baseline snapshot — all optional (MFT may add a member before scores are known).
   age: optInt(17, 80),
-  sex: z
-    .enum(["MC", "F"])
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  sex: emptyToUndefined(z.enum(["MC", "F"])),
   bodyweightLb: optInt(80, 500),
-  heightIn: z.coerce
-    .number()
-    .multipleOf(0.5, "Nearest 0.5 inch")
-    .min(48)
-    .max(96)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  heightIn: emptyToUndefined(
+    z.coerce.number().multipleOf(0.5, "Nearest 0.5 inch").min(48).max(96),
+  ),
   mdlLb: optInt(50, 700),
   hrpReps: optInt(0, 150),
   sdcSec: optMmss,
@@ -69,26 +57,14 @@ export const MEMBER_SCHEMA = z.object({
 
   // Medical profile (optional) — mirrors the individual profile form.
   hasMedicalProfile: z.coerce.boolean().default(false),
-  profileType: z.enum(["temporary", "permanent"]).optional(),
-  profileStart: z
-    .string()
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  profileExpires: z
-    .string()
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  profileType: emptyToUndefined(z.enum(["temporary", "permanent"])),
+  profileStart: emptyToUndefined(z.string()),
+  profileExpires: emptyToUndefined(z.string()),
   restrictions: z.array(restrictionEnum).default([]),
   exemptEvents: z.array(eventEnum).default([]),
   alternateAerobic: alternateAerobicEnum.default("none"),
-  alternateResult: goNoGoEnum
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  alternateResult: emptyToUndefined(goNoGoEnum),
   liftLimitLb: optInt(0, 700),
-  profileNotes: z
-    .string()
-    .max(500)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
+  profileNotes: emptyToUndefined(z.string().max(500)),
 });
 export type MemberInput = z.infer<typeof MEMBER_SCHEMA>;
