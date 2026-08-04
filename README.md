@@ -70,9 +70,17 @@ pushes to ghcr, then on the droplet applies pending migrations (one-shot
 `scripts/migrate.mjs`) and swaps the container behind Caddy, with a `/api/health`
 check. Migrations are idempotent (`IF NOT EXISTS`, partial indexes).
 
+## AI coaches
+
+- **Individual plan** — Q&A + structured edits over the plan (`src/lib/groq/chat.ts`).
+- **Group PT (MFT coach)** — advisory Q&A over a unit's AT plan, grounded in ability
+  groups, the daily schedule, and per-soldier cards/profiles
+  (`src/lib/groq/at-coach.ts`, panel on `/units/[id]/at`). Advisory only for now —
+  it can't edit the plan.
+
 ## Not yet built
 
-- AFT-scoring: two-way profile sync on claim beyond the initial seed.
-- AI coach currently covers the individual plan only (group-PT coach in progress).
+- Structured edits from the group-PT coach; two-way profile sync on claim beyond
+  the initial seed.
 - Known: `CI` Trivy scan flags a `next-auth` beta advisory (GHSA-8fpg-xm3f-6cx3) —
   pending a careful auth-library bump; does not block deploys.

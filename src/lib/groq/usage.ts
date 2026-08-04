@@ -8,7 +8,7 @@ import { db, schema } from "@/lib/db";
 export async function recordGroqCall(args: {
   userId: string;
   model: string;
-  purpose: "narrative" | "chat";
+  purpose: "narrative" | "chat" | "at_coach";
   inputTokens?: number;
   outputTokens?: number;
   ok?: boolean;
