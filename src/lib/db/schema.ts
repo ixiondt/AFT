@@ -506,6 +506,8 @@ export const atChatMessages = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role", { enum: ["user", "assistant"] }).notNull(),
     content: text("content").notNull(),
+    /** Structured edits the coach applied this turn (null for questions/user turns). */
+    appliedEdits: jsonb("applied_edits"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
