@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { requireUnitAccess } from "@/lib/auth";
 import { loadActiveAtPlan } from "@/lib/at/service";
+import { loadAtChatHistory } from "@/lib/at/chat-service";
 import type { AtDayPlan, AtPlan } from "@/lib/at";
 import { readFlash } from "@/lib/flash";
 import { SubmitButton } from "../../../../submit-button";
 import { generateAtPlanAction } from "./actions";
 import { PrintButton } from "./print-button";
+import { AtCoachPanel } from "./at-coach-panel";
 
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -24,6 +26,7 @@ export default async function AtPlanPage({
   const row = await loadActiveAtPlan(id);
   const plan = (row?.payload as AtPlan | undefined) ?? null;
   const flash = await readFlash();
+  const chat = row ? await loadAtChatHistory(row.id) : [];
 
   const defaultStart = ctx.unit.atStartDate
     ? new Date(ctx.unit.atStartDate).toISOString().slice(0, 10)
@@ -130,6 +133,14 @@ export default async function AtPlanPage({
           <AbilityGroups plan={plan} />
           <Schedule plan={plan} />
           <SoldierCards plan={plan} />
+          <AtCoachPanel
+            unitId={id}
+            messages={chat.map((m) => ({
+              id: m.id,
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            }))}
+          />
         </div>
       )}
     </main>

@@ -489,3 +489,27 @@ export const atPlans = pgTable(
       .where(sql`${t.active} = true`),
   }),
 );
+
+/** MFT ↔ AI coach chat about a unit's AT plan (advisory; no structured edits). */
+export const atChatMessages = pgTable(
+  "at_chat_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    atPlanId: uuid("at_plan_id")
+      .notNull()
+      .references(() => atPlans.id, { onDelete: "cascade" }),
+    unitId: uuid("unit_id")
+      .notNull()
+      .references(() => units.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["user", "assistant"] }).notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    planIdx: index("at_chat_plan_idx").on(t.atPlanId, t.createdAt),
+    unitIdx: index("at_chat_unit_idx").on(t.unitId),
+  }),
+);
