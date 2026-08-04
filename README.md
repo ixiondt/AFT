@@ -73,14 +73,12 @@ check. Migrations are idempotent (`IF NOT EXISTS`, partial indexes).
 ## AI coaches
 
 - **Individual plan** — Q&A + structured edits over the plan (`src/lib/groq/chat.ts`).
-- **Group PT (MFT coach)** — advisory Q&A over a unit's AT plan, grounded in ability
-  groups, the daily schedule, and per-soldier cards/profiles
-  (`src/lib/groq/at-coach.ts`, panel on `/units/[id]/at`). Advisory only for now —
-  it can't edit the plan.
+- **Group PT (MFT coach)** — Q&A **and** structured edits over a unit's AT plan
+  (`src/lib/groq/at-coach.ts` + `src/lib/at/edits.ts`, panel on `/units/[id]/at`):
+  add a day note, set a rest day, replace a day's activities, or move a soldier
+  between ability groups — grounded in the roster/profiles (a no-run soldier can't
+  be moved into a run group).
 
 ## Not yet built
 
-- Structured edits from the group-PT coach; two-way profile sync on claim beyond
-  the initial seed.
-- Known: `CI` Trivy scan flags a `next-auth` beta advisory (GHSA-8fpg-xm3f-6cx3) —
-  pending a careful auth-library bump; does not block deploys.
+- Two-way profile sync on claim beyond the initial seed.
