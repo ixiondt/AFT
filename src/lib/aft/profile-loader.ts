@@ -26,6 +26,7 @@ export type InitialFormValues = {
     restrictions: string[];
     exemptEvents: string[];
     alternateAerobic: string;
+    currentAlternateResult?: string;
     liftLimitLb?: string;
     profileNotes?: string;
   };
@@ -124,6 +125,9 @@ export async function loadInitialFormValues(userId: string): Promise<InitialForm
       restrictions: (medProfile.restrictions ?? []) as string[],
       exemptEvents: (medProfile.exemptEvents ?? []) as string[],
       alternateAerobic: medProfile.alternateAerobic,
+      ...(latestTest?.profileContext?.alternateResult
+        ? { currentAlternateResult: latestTest.profileContext.alternateResult }
+        : {}),
       ...(medProfile.liftLimitLb != null
         ? { liftLimitLb: String(medProfile.liftLimitLb) }
         : {}),

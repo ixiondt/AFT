@@ -36,7 +36,17 @@ export default async function AtPlanPage({
         <Link href={`/units/${id}`} className="text-xs text-[var(--color-ink-3)] hover:underline">
           ← {ctx.unit.name}
         </Link>
-        {plan && <PrintButton />}
+        {plan && (
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/units/${id}/at/pdf`}
+              className="rounded-lg border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm text-[var(--color-ink-2)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+            >
+              Download PDF
+            </a>
+            <PrintButton />
+          </div>
+        )}
       </div>
 
       <header className="mt-2 border-b border-[var(--color-line)] pb-4">
@@ -237,6 +247,18 @@ function SoldierCards({ plan }: { plan: AtPlan }) {
               </span>
             </div>
             <dl className="mt-2 space-y-1 text-xs text-[var(--color-ink-2)]">
+              {c.aftScore && (
+                <Line
+                  term="AFT"
+                  desc={
+                    `${c.aftScore.total} pts` +
+                    (c.aftScore.profiled
+                      ? ` / ${c.aftScore.scoredEventCount} events${c.aftScore.isRecord ? "" : " · diagnostic"}`
+                      : "") +
+                    ` · ${c.aftScore.pass ? "pass" : "fail"}`
+                  }
+                />
+              )}
               <Line term="Run" desc={c.runPrescription} />
               <Line term="Strength" desc={c.strengthPrescription} />
             </dl>

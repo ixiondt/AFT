@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { alternateAerobicEnum, eventEnum, restrictionEnum } from "@/lib/aft/schemas";
+import {
+  alternateAerobicEnum,
+  eventEnum,
+  goNoGoEnum,
+  restrictionEnum,
+} from "@/lib/aft/schemas";
 
 /** "m:ss" → seconds, or null if malformed. */
 function parseMmss(raw: unknown): number | null {
@@ -76,6 +81,9 @@ export const MEMBER_SCHEMA = z.object({
   restrictions: z.array(restrictionEnum).default([]),
   exemptEvents: z.array(eventEnum).default([]),
   alternateAerobic: alternateAerobicEnum.default("none"),
+  alternateResult: goNoGoEnum
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   liftLimitLb: optInt(0, 700),
   profileNotes: z
     .string()

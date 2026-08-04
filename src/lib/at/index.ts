@@ -1,5 +1,6 @@
 import { computePaceZones } from "@/lib/planner/pace";
-import { secToMmss } from "@/lib/scoring";
+import { scoreAft, secToMmss } from "@/lib/scoring";
+import { scoreAftProfiled, type AlternateModality } from "@/lib/scoring/profiled";
 import type { ProfileAccommodation } from "@/lib/planner/types";
 import type {
   AtAbilityGroup,
@@ -275,12 +276,41 @@ function strengthPrescriptionFor(member: AtMemberInput): string {
   return `Deadlift 5×5 @ ~${working} lb${capped ? " (capped per profile)" : ""}`;
 }
 
+/** Profile-aware baseline AFT score for a card, when a full baseline is on file. */
+function scoreForCard(member: AtMemberInput): AtSoldierCard["aftScore"] {
+  if (member.baseline == null || member.age == null || member.sex == null) return undefined;
+  const p = member.profile;
+  if (p && (p.exemptEvents.length > 0 || p.alternateAerobic !== "none")) {
+    const r = scoreAftProfiled({
+      age: member.age,
+      sex: member.sex,
+      raw: member.baseline,
+      profile: {
+        profileType: p.profileType ?? "permanent",
+        exemptEvents: p.exemptEvents,
+        alternateAerobic: p.alternateAerobic === "none" ? "none" : (p.alternateAerobic as AlternateModality),
+        ...(p.alternateResult ? { alternateResult: p.alternateResult } : {}),
+      },
+    });
+    return {
+      total: r.total,
+      scoredEventCount: r.scoredEventCount,
+      isRecord: r.isRecord,
+      pass: r.pass,
+      profiled: true,
+    };
+  }
+  const r = scoreAft({ age: member.age, sex: member.sex, raw: member.baseline });
+  return { total: r.total, scoredEventCount: 5, isRecord: true, pass: r.pass, profiled: false };
+}
+
 function buildCard(member: AtMemberInput, key: AtAbilityGroupKey, group?: AtAbilityGroup): AtSoldierCard {
   const accommodations = describeAccommodations(member.profile);
   const notes: string[] = [];
   if (member.twoMileSec == null && key !== "ALT") {
     notes.push("Needs a baseline run to refine pace.");
   }
+  const aftScore = scoreForCard(member);
   return {
     memberId: member.id,
     displayName: member.displayName,
@@ -289,6 +319,7 @@ function buildCard(member: AtMemberInput, key: AtAbilityGroupKey, group?: AtAbil
     strengthPrescription: strengthPrescriptionFor(member),
     accommodations,
     notes,
+    ...(aftScore ? { aftScore } : {}),
   };
 }
 

@@ -117,6 +117,7 @@ export type InitialFormValues = {
     restrictions: string[];
     exemptEvents: string[];
     alternateAerobic: string;
+    currentAlternateResult?: string;
     liftLimitLb?: string;
     profileNotes?: string;
   };
@@ -394,6 +395,17 @@ export function ProfileForm({
                 <option value="bike">12 km stationary bike</option>
                 <option value="swim">1,000 m swim</option>
               </Select>
+              <Select
+                name="currentAlternateResult"
+                label="Alt event result (current test)"
+                defaultValue={iv.medicalProfile?.currentAlternateResult ?? ""}
+              >
+                <option value="">— (only if using an alternate)</option>
+                <option value="go">Go (scores 60)</option>
+                <option value="no_go">No-Go</option>
+              </Select>
+            </Row>
+            <Row>
               <NumberInput
                 name="liftLimitLb"
                 label="Lift limit (lb, optional)"

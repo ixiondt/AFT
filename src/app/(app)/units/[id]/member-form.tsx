@@ -160,6 +160,18 @@ export function MemberForm({
                 </select>
               </label>
               <Field name="liftLimitLb" label="Lift limit (lb)" type="number" step={5} defaultValue={str(prof?.liftLimitLb)} />
+              <label className="block">
+                <span className={labelClass}>Alt event result</span>
+                <select
+                  name="alternateResult"
+                  defaultValue={member?.alternateResult ?? ""}
+                  className={inputClass}
+                >
+                  <option value="">—</option>
+                  <option value="go">Go (60)</option>
+                  <option value="no_go">No-Go</option>
+                </select>
+              </label>
             </div>
 
             <CheckGrid
