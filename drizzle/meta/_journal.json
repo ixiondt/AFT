@@ -99,6 +99,13 @@
       "when": 1785839299671,
       "tag": "0013_zippy_gressill",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1785840324889,
+      "tag": "0014_empty_giant_man",
+      "breakpoints": true
     }
   ]
 }

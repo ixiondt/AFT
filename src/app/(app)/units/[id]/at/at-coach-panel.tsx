@@ -18,8 +18,8 @@ export function AtCoachPanel({
         <span>🎖️</span> MFT coach
       </h2>
       <p className="mt-0.5 text-xs text-[var(--color-ink-3)]">
-        Ask about ability groups, progressions, or handling a profiled soldier. Advisory —
-        it won’t change the plan.
+        Ask about ability groups or progressions — or tell it to adjust the plan
+        (“make day 6 a rest day”, “move SGT Doe to Group B”). Changes apply above.
       </p>
 
       {messages.length > 0 && (

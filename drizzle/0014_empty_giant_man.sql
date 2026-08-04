@@ -1,0 +1,1 @@
+ALTER TABLE "at_chat_messages" ADD COLUMN IF NOT EXISTS "applied_edits" jsonb;

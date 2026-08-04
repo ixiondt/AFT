@@ -1,25 +1,68 @@
+import { z } from "zod";
 import { secToMmss } from "@/lib/scoring";
 import type { AtPlan } from "@/lib/at";
+import type { AtEditOp } from "@/lib/at/edits";
 import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { recordGroqCall } from "./usage";
 import { getGroqClient } from "./client";
 
+/* ----------------------------- edit schema ----------------------------- */
+
+const AtEditOpSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("add_day_note"),
+    dayIndex: z.number().int().min(0).max(20),
+    text: z.string().min(1).max(300),
+  }),
+  z.object({
+    type: z.literal("set_rest"),
+    dayIndex: z.number().int().min(0).max(20),
+    reason: z.string().max(200).optional(),
+  }),
+  z.object({
+    type: z.literal("set_day"),
+    dayIndex: z.number().int().min(0).max(20),
+    title: z.string().min(3).max(100),
+    activities: z.array(z.string().min(1).max(200)).min(1).max(10),
+  }),
+  z.object({
+    type: z.literal("move_member"),
+    memberId: z.string().min(1).max(64),
+    toGroup: z.enum(["A", "B", "C", "ALT", "UNASSESSED"]),
+  }),
+]);
+
+export const AT_COACH_RESPONSE_SCHEMA = z.object({
+  reply: z.string().min(1).max(2000),
+  edits: z.array(AtEditOpSchema).max(20).default([]),
+});
+export type AtCoachResponse = { reply: string; edits: AtEditOp[] };
+
 const SYSTEM_PROMPT = `You are an assistant to a US Army Master Fitness Trainer (MFT) planning and running unit Physical Training for Annual Training (AT).
 
 Ground every answer in Army doctrine (FM 7-22 Holistic Health and Fitness):
 - PRT session structure: Preparation → Activities → Recovery.
-- Ability Group Runs (AGR): soldiers sorted by run ability, each group led at a set pace; the group is paced so the slowest member can hold it.
-- The AFT events: 3-Rep-Max Deadlift (MDL), Hand-Release Push-Up (HRP), Sprint-Drag-Carry (SDC), Plank (PLK), and the 2-Mile Run (2MR).
+- Ability Group Runs (AGR): soldiers sorted by run ability; each group is paced so the slowest member can hold it.
+- The AFT events: MDL (deadlift), HRP (hand-release push-up), SDC (sprint-drag-carry), PLK (plank), 2MR (2-mile run).
 
-You are given the unit's generated AT plan: ability groups (with paces), the daily schedule, and per-soldier cards (baseline scores, run/strength prescriptions, and any medical-profile accommodations).
+You receive the unit's generated AT plan: ability groups (with paces), the daily schedule (dayIndex is 0-based), and per-soldier cards (each with a memberId, baseline, and any medical-profile accommodations).
+
+Return STRICT JSON: { "reply": "...", "edits": [ ... ] }.
+- "reply": 1-4 sentences to the MFT.
+- "edits": structured changes to APPLY to the plan (empty array if the MFT only asked a question).
+
+EDIT TYPES:
+- add_day_note { dayIndex, text } — attach a note to a day.
+- set_rest { dayIndex, reason? } — make a day a rest day.
+- set_day { dayIndex, title, activities[] } — replace a day's title + activity lines (Preparation/Recovery are kept).
+- move_member { memberId, toGroup } — reassign a soldier to ability group A/B/C/ALT/UNASSESSED. Use the exact memberId from the SOLDIERS list.
 
 RULES:
-- Respect every medical profile. Never prescribe running for a soldier flagged no-run / alternate-aerobic; respect lift limits and exempt events.
-- Be concise and practical — a few short paragraphs or a bulleted list an NCO can act on at first formation.
-- Prefer specifics grounded in the plan you were given (name the ability group, the day, the soldier) over generic advice.
-- You are advisory only: you cannot edit the plan. If asked to change it, explain what to adjust (roster, AT window, or regenerate) and why.
-- If you don't have enough info, say what's missing (e.g., a soldier needs a baseline run).`;
+- Output STRICT JSON only, no prose outside the object.
+- Respect every medical profile: NEVER move a no-run / alternate-aerobic soldier into a run group (A/B/C) — they belong in ALT. Don't prescribe running or lifting a profiled soldier can't do.
+- Be conservative: the smallest change that satisfies the request. If it's just a question, return an empty edits array and answer in "reply".
+- Always include a "reply" summarizing what you changed and why.`;
 
 function condenseAtPlan(plan: AtPlan): string {
   const lines: string[] = [];
@@ -30,21 +73,18 @@ function condenseAtPlan(plan: AtPlan): string {
   for (const g of plan.groups) {
     const pace = g.prescribedPacePerMileSec ? ` @ ${secToMmss(g.prescribedPacePerMileSec)}/mi` : "";
     const mod = g.modality ? ` (${g.modality})` : "";
-    lines.push(`  ${g.label}: ${g.memberIds.length} soldiers${pace}${mod} — ${g.description}`);
+    lines.push(`  ${g.key} (${g.label}): ${g.memberIds.length} soldiers${pace}${mod} — ${g.description}`);
   }
 
-  lines.push("", "DAILY SCHEDULE:");
+  lines.push("", "DAILY SCHEDULE (dayIndex: title):");
   for (const d of plan.schedule) {
-    lines.push(`  Day ${d.dayIndex + 1}: ${d.rest ? "Rest" : d.title}`);
+    lines.push(`  ${d.dayIndex}: ${d.rest ? "Rest" : d.title}`);
   }
 
-  lines.push("", "SOLDIERS:");
+  lines.push("", "SOLDIERS (memberId | name [group]):");
   for (const c of plan.cards) {
-    const score = c.aftScore
-      ? ` ${c.aftScore.total}pts${c.aftScore.profiled ? `/${c.aftScore.scoredEventCount}ev` : ""}`
-      : "";
     const acc = c.accommodations.length ? ` | profile: ${c.accommodations.join("; ")}` : "";
-    lines.push(`  ${c.displayName} [${c.abilityGroup}]${score} — run: ${c.runPrescription}; strength: ${c.strengthPrescription}${acc}`);
+    lines.push(`  ${c.memberId} | ${c.displayName} [${c.abilityGroup}] — run: ${c.runPrescription}${acc}`);
   }
   return lines.join("\n");
 }
@@ -58,25 +98,26 @@ function condenseHistory(
   return lines.join("\n");
 }
 
-/** Advisory coach reply for a unit AT plan. Returns null if Groq is unavailable. */
+/** Advisory + editing coach for a unit AT plan. Returns null if Groq is unavailable. */
 export async function generateAtCoachResponse(args: {
   plan: AtPlan;
   userMessage: string;
   history: ReadonlyArray<{ role: "user" | "assistant"; content: string }>;
   userId?: string;
-}): Promise<string | null> {
+}): Promise<AtCoachResponse | null> {
   const client = getGroqClient();
   if (!client) return null;
 
   try {
     const completion = await client.chat.completions.create({
       model: env.groqModel,
-      temperature: 0.4,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `${condenseAtPlan(args.plan)}\n\n${condenseHistory(args.history)}\n\nMFT QUESTION: ${args.userMessage}`,
+          content: `${condenseAtPlan(args.plan)}\n\n${condenseHistory(args.history)}\n\nMFT MESSAGE: ${args.userMessage}\n\nReturn { "reply": "...", "edits": [...] }.`,
         },
       ],
     });
@@ -91,12 +132,32 @@ export async function generateAtCoachResponse(args: {
       });
     }
 
-    const content = completion.choices[0]?.message.content?.trim();
+    const content = completion.choices[0]?.message.content;
     if (!content) {
       logger.warn("groq at-coach: empty content");
       return null;
     }
-    return content;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch (err) {
+      logger.warn({ err: (err as Error).message }, "groq at-coach: JSON parse failed");
+      return null;
+    }
+    const result = AT_COACH_RESPONSE_SCHEMA.safeParse(parsed);
+    if (!result.success) {
+      // Fall back to a reply-only response if the edits didn't validate.
+      const reply = (parsed as { reply?: unknown }).reply;
+      if (typeof reply === "string" && reply.length > 0) {
+        return { reply, edits: [] };
+      }
+      logger.warn(
+        { issues: result.error.issues.slice(0, 3).map((i) => i.message) },
+        "groq at-coach: schema mismatch",
+      );
+      return null;
+    }
+    return { reply: result.data.reply, edits: result.data.edits as AtEditOp[] };
   } catch (err) {
     logger.warn({ err: (err as Error).message }, "groq at-coach: call failed");
     return null;
