@@ -4,8 +4,8 @@ import path from "node:path";
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
-      "@data": path.resolve(__dirname, "data"),
+      "@": path.resolve(import.meta.dirname, "src"),
+      "@data": path.resolve(import.meta.dirname, "data"),
     },
   },
   test: {
